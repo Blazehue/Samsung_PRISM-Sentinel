@@ -1,0 +1,13 @@
+{
+  "_readme": "Hand-written paraphrases of kit queries (never pre-warmed) for the A3 paraphrase-hit check.",
+  "paraphrases": {
+    "row_1": ["tablet display blinks then turns blank when opening gmail messages", "Gmail makes my A115G screen go dark after flashing"],
+    "row_2": ["S22 shows a white empty screen in the stock app and Smart Tutor", "no text shows, just a blank white display on my S22"],
+    "row_5": ["QR scan with Smart Switch leaves the tablet display empty", "cannot transfer from S25, tablet screen blank during Smart Switch"],
+    "row_8": ["phone screen is tiny on my TV and wont fill it when mirroring", "mirrored display doesnt fill the TV screen"],
+    "row_10": ["camera makes the Flip 6 display flicker and go dark", "Z Flip 6 flickering screen while recording video"],
+    "row_14": ["my galaxy has a totally smashed display", "screen shattered completely, need repair"],
+    "row_20": ["A17 display distorted since I got it", "new Galaxy A17 screen looks warped"],
+    "row_21": ["touch lag on S22, taps register late", "screen input delayed and touch not responsive on galaxy s22"]
+  }
+}

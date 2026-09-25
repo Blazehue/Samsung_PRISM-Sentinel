@@ -382,3 +382,34 @@ def _shortlist(steps: list[str], k: int = 5) -> list[dict]:
         e = cat.entries[i]
         out.append({"id": e.id, "message": e.message, "description": e.description})
     return out
+
+
+def _refine_links(groups: list[dict], deadline: float) -> None:
+    """Gemini as a closed-set tie-breaker for groups the rules could only give a
+    placeholder: it may pick one shortlisted catalogue entry, or none."""
+    cat = get_catalog()
+    todo = [g for g in groups if g["actionableDeeplink"] and g["actionableDeeplink"]["deeplink"] == DUMMY]
+    todo = [(g, _shortlist(g["steps"])) for g in todo]
+    todo = [(g, c) for g, c in todo if c]
+    if not todo:
+        return
+    choices = llm.pick_deeplinks([{"steps": g["steps"], "candidates": c} for g, c in todo], deadline=deadline)
+    if not choices:
+        return
+    by_id = {e.id: e for e in cat.entries}
+    for (g, _), cid in zip(todo, choices):
+        e = by_id.get(cid) if cid else None
+        if e is None:
+            continue
+        pol = cat.polarity(g["steps"])
+        if pol in ("Enable", "Disable") and e.message.startswith(("Enable", "Disable")) and not e.message.startswith(pol):
+            continue                                  # never let it flip the direction the steps ask for
+        # It must be the screen the rules identified (the placeholder names it):
+        # a mixed "tips" group can't be re-aimed at another setting it mentions.
+        screen = [t for t in tokens(cat.primary_screen(g["steps"]) or "") if len(t) > 2]
+        named = set(tokens(e.message + " " + e.description))
+        if not screen or not any(t in named for t in screen):
+            continue
+        g["actionableDeeplink"] = {"deeplink": e.deeplink, "description": e.description,
+                                   "message": e.message, "originalType": e.original_type}
+        g["validationDeeplink"] = _validation(e.validation)

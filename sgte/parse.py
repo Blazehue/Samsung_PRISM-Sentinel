@@ -111,3 +111,34 @@ def clean_markup(text: str) -> str:
     text = MD_LINK.sub(r"\1", text)
     text = re.sub(r"<br\s*/?>|</p>|</li>", "\n", text, flags=re.I)
     return TAG.sub("", text).replace("&nbsp;", " ").replace("&amp;", "&")
+
+
+def _normalise(content: str) -> str:
+    content = clean_markup(content).replace("\r", "")
+    # Headers sometimes follow the category prefix on the same line: "…Tablet): # Title".
+    content = re.sub(r"(?<!\n)\s(#{1,4}\s)", r"\n\1", content)
+    # Drop the catalogue prefix "Smartphone,Tablet Title ( Smartphone,Tablet): " on line 1.
+    first, _, rest = content.partition("\n")
+    if re.search(r"\):\s*$", first) or re.match(r"^[A-Z][\w ]*(,[\w ]+)+ .*\(.*\):", first):
+        first = re.sub(r"^.*?\):\s*", "", first)
+    return (first + "\n" + rest).strip()
+
+
+def parse_siis(siis: dict) -> tuple[str, list[Section]]:
+    title = strip_urls(clean_markup(str(siis.get("title") or ""))).strip()
+    content = _normalise(str(siis.get("content") or ""))
+
+    raw_sections: list[tuple[str, list[str]]] = []
+    cur_title, cur_lines = title, []
+    for line in content.split("\n"):
+        m = HEADER.match(line) or STEP_HEADER.match(line)
+        if m:
+            if cur_lines:
+                raw_sections.append((cur_title, cur_lines))
+            cur_title, cur_lines = clean_header(m.group(m.lastindex)), []
+        elif line.strip():
+            cur_lines.append(line.strip())
+    if cur_lines:
+        raw_sections.append((cur_title, cur_lines))
+
+    sections: list[Section] = []

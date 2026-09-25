@@ -359,3 +359,26 @@ def _units(sec: Section) -> list[tuple[str, list[Group]]]:
         units.append((base, loose))
     units += [(label_name(g.label), [g]) for g in labelled]
     return units
+
+
+def _category(name: str, groups: list[dict]) -> str:
+    blob = name + " " + " ".join(s for g in groups for s in g["steps"])
+    if CRITICAL.search(blob):
+        return "critical"
+    return "auto" if all(g["actionableDeeplink"] for g in groups) else "manual"
+
+
+LLM_BUDGET_S = 5.0          # total Gemini time per request; the cold path must stay well under 8 s
+
+
+def _shortlist(steps: list[str], k: int = 5) -> list[dict]:
+    """Catalogue candidates the rules considered for a placeholder group."""
+    cat = get_catalog()
+    q = [t for t in tokens(" ".join(steps))]
+    out = []
+    for i, score in cat.bm25.top(q, k=k):
+        if score <= 0:
+            break
+        e = cat.entries[i]
+        out.append({"id": e.id, "message": e.message, "description": e.description})
+    return out

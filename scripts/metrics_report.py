@@ -27,3 +27,22 @@ from sgte.parse import _sentences, clean_markup  # noqa: E402
 from sgte.rules import format_errors, schema_errors, url_leaks  # noqa: E402
 from sgte.text import cosine, embed, tokens  # noqa: E402
 from sgte.variations import variations  # noqa: E402
+
+DATA = ROOT / "data"
+KIT = json.loads((DATA / "student_kit" / "siis_responses.json").read_text())["responses"]
+UNSEEN = json.loads((DATA / "unseen_siis.json").read_text())["cases"]
+PARA = json.loads((DATA / "paraphrases.json").read_text())["paraphrases"]
+NO_VIABLE = {"What are Bixby Routines?"}
+CAT = get_catalog()
+UI_START = re.compile(r"^(?:\w+,\s+)?(tap|select|touch|press|open|swipe|navigate|go to|turn|drag|enter)\b", re.I)
+
+
+def pct(xs, p):
+    xs = sorted(xs)
+    return xs[min(len(xs) - 1, int(p / 100 * len(xs)))] if xs else float("nan")
+
+
+def timed(fn, *a):
+    t = time.perf_counter()
+    out = fn(*a)
+    return out, (time.perf_counter() - t) * 1000

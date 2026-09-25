@@ -159,3 +159,21 @@ code { font: 500 .86em var(--mono); background: rgba(0, 0, 0, .05); padding: 1px
 .scroll-cue span::after { content: ""; position: absolute; bottom: 0; left: -6px; width: 12px; height: 12px; border-right: 1px solid rgba(250,250,250,.7); border-bottom: 1px solid rgba(250,250,250,.7); transform: rotate(45deg); transform-origin: center; }
 .scroll-cue { animation: cue 2.4s var(--ease) infinite; }
 @keyframes cue { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+
+/* ───────── sections ───────── */
+.section { padding-block: var(--sec); position: relative; }
+.sec-head { display: flex; justify-content: space-between; margin-bottom: 40px; }
+.sec-head.split > :last-child { width: calc(50% - 10px); }
+
+/* tiles — the logo grid */
+.tile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.tile {
+  background: var(--surface); border-radius: var(--r-lg); min-height: 312px; padding: 32px;
+  display: grid; grid-template-rows: 1fr auto auto; justify-items: center; text-align: center;
+  transition: transform .5s var(--ease), box-shadow .5s var(--ease);
+}
+.tile:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+.glyph { align-self: center; font: 500 64px/1 var(--display); letter-spacing: -.04em; color: var(--ink); }
+.mono-glyph { font: 500 40px/1 var(--mono); letter-spacing: -.04em; }
+.tile h3 { margin: 18px 0 4px; font: 500 18px/24px var(--text); }
+.tile p { margin: 0; max-width: 360px; font-size: 14px; line-height: 20px; color: var(--muted); }

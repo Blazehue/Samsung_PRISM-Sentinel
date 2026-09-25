@@ -293,3 +293,21 @@ def test_guide_one_interaction_per_step():
                 for sg in a["stepGroups"]:
                     for st in sg["steps"]:
                         assert len(starts.findall(st)) <= 1, st
+
+
+def test_guide_variation_registers():
+    vs = variations("My Galaxy S22 screen turns completely blank when I open Gmail")
+    assert any(v.startswith("I am experiencing") for v in vs)                   # formal
+    assert any(v.startswith("ugh ") for v in vs)                                 # casual
+    assert any(v.endswith("troubleshooting") and "?" not in v for v in vs)       # keyword-only
+    assert any("annoying" in v for v in vs)                                      # frustrated
+    assert any(_re.search(r"\b(blck|sceren|scren|galxy|seach)\b", v) for v in vs) or any(v.startswith("my ") for v in vs)   # typo-inclusive
+
+
+def test_guide_no_siis_uses_semantic_lookup_and_meta(client):
+    r = client.post("/v1/troubleshoot", json={"query": "My Galaxy S22 screen turns completely blank or white and no text appears"})
+    body = r.json()
+    assert r.headers["x-cache"] == "semantic" and body["contexts"] and body["contexts"][0]["title"] == "Blank screen"
+    assert body["meta"]["cache_hit"] is True and body["meta"]["cost_usd"] == 0.0 and "latency_ms" in body["meta"]
+    miss = client.post("/v1/troubleshoot", json={"query": "how do I bake sourdough bread"}).json()
+    assert miss["contexts"] == [] and miss["fallback"] == "no_siis_context"

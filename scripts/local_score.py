@@ -14,3 +14,22 @@ import json
 import statistics
 import sys
 import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from sgte.catalog import get_catalog  # noqa: E402
+from sgte.grounding import grounding_rate  # noqa: E402
+from sgte.rules import format_errors, schema_errors, url_leaks  # noqa: E402
+from sgte.text import jaccard, tokens  # noqa: E402
+
+KIT = ROOT / "data" / "student_kit" / "siis_responses.json"
+UNSEEN = ROOT / "data" / "unseen_siis.json"
+PARA = ROOT / "data" / "paraphrases.json"
+NO_VIABLE = {"What are Bixby Routines?"}        # unseen article with no instructions at all
+
+
+def p95(xs):
+    xs = sorted(xs)
+    return xs[min(len(xs) - 1, int(0.95 * len(xs)))] if xs else None

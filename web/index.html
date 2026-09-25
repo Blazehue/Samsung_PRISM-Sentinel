@@ -239,3 +239,51 @@
     </div>
   </div>
 </section>
+
+<!-- ───────────────────────── API (pricing-card style) ───────────────────────── -->
+<section class="section" id="api">
+  <div class="wrap">
+    <p class="eyebrow"><span>//</span> API</p>
+    <h2 class="h2 center" data-words>Four endpoints,<br>no auth, one schema</h2>
+  </div>
+  <div class="wrap api-grid">
+    <article class="card api reveal">
+      <span class="badge">GET</span>
+      <h3 class="path">/health</h3>
+      <p class="api-lead">Liveness for the judging harness.</p>
+      <ul class="checks"><li>Returns <code>{"status":"ok"}</code></li><li>No dependencies on the request path</li></ul>
+      <pre class="snippet">curl <span class="base"></span>/health</pre>
+      <button class="api-try" data-try="health">Try it <span>→</span></button>
+      <pre class="try-out" hidden></pre>
+    </article>
+    <article class="card api featured reveal">
+      <span class="badge dark">POST</span>
+      <h3 class="path">/v1/troubleshoot</h3>
+      <p class="api-lead">Query + SIIS article → ContextDeeplinkResponse.</p>
+      <ul class="checks"><li>Schema-validated goal → actions → step groups</li><li>Catalogue or <code>dummy_positive</code> deeplinks</li><li><code>X-Cache</code> and <code>X-Latency-Ms</code> headers</li><li>Odd input returns <code>{"contexts": []}</code>, never a 500</li></ul>
+      <pre class="snippet">curl -X POST <span class="base"></span>/v1/troubleshoot \
+  -H 'content-type: application/json' \
+  -d '{"query":"…","siis_response":{"title":"…","content":"…"}}'</pre>
+      <a class="api-try dark" href="#simulator">Open in simulator <span>→</span></a>
+    </article>
+    <article class="card api reveal">
+      <span class="badge">POST</span>
+      <h3 class="path">/v1/variations</h3>
+      <p class="api-lead">8–10 diverse rewordings of a complaint.</p>
+      <ul class="checks"><li>Formal, casual, keyword-only, frustrated, typo-inclusive</li><li>Gemini when a key is set, deterministic otherwise</li></ul>
+      <pre class="snippet">curl -X POST <span class="base"></span>/v1/variations \
+  -d '{"query":"screen went black"}'</pre>
+      <button class="api-try" data-try="variations">Try it <span>→</span></button>
+      <pre class="try-out" hidden></pre>
+    </article>
+    <article class="card api reveal">
+      <span class="badge">GET</span>
+      <h3 class="path">/v1/metrics</h3>
+      <p class="api-lead">Cache, latency and cost, live.</p>
+      <ul class="checks"><li>Exact / paraphrase / miss counts</li><li>Hit and miss p50 · p95</li><li>LLM usage and cost per query</li></ul>
+      <pre class="snippet">curl <span class="base"></span>/v1/metrics</pre>
+      <button class="api-try" data-try="metrics">Try it <span>→</span></button>
+      <pre class="try-out" hidden></pre>
+    </article>
+  </div>
+</section>

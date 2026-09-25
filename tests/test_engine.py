@@ -209,3 +209,29 @@ def test_ui_chrome_label_on_another_os_gets_no_link():
 def test_screenshot_settings_are_not_skipped_as_image_references():
     _, secs = parse_siis({"title": "Screenshots", "content": "Open Settings, tap Advanced features, and then tap Palm swipe to capture screenshot."})
     assert secs and secs[0].steps
+
+
+def test_whole_catalogue_sweep():
+    """Every catalogue entry, phrased as a Settings step naming its screen, links
+    back to itself (or an entry with the identical on-screen message)."""
+    import re as _re
+    cat, ok, wrong = get_catalog(), 0, []
+    for e in cat.entries:
+        m = _re.match(r"^Opens the (.+?) settings? (?:page )?in ", e.description) or _re.match(r"^(?:Enables|Disables) (.+?) via ", e.description)
+        lab = (m.group(1) if m else _re.sub(r"^(View|Enable|Disable|Adjust|Check|Open|Set)\s+", "", e.message))
+        lab = lab[0].upper() + lab[1:]
+        if e.description.startswith("Retrieves"):
+            continue                     # read-only monitor: queried by validation, not opened by a step
+        pol = "on" if e.message.startswith("Enable") else "off" if e.message.startswith("Disable") else None
+        value = e.message.startswith(("Adjust", "Increase", "Set"))
+        step = f"Open Settings, tap {lab}" + (f", and then tap the switch to turn it {pol}." if pol else
+                                              ", and then drag the slider to set it." if value else ".")
+        got = cat.match("Change the setting", [step])
+        same_page = got and cat.desc_label(got.entry) == cat.desc_label(e) and got.entry.message == e.message
+        if got and (got.entry.deeplink == e.deeplink or same_page):      # exact entry, or a true duplicate
+            ok += 1
+        else:
+            wrong.append((e.id, lab, got and got.entry.message))
+    targets = [e for e in cat.entries if not e.description.startswith("Retrieves")]
+    assert ok / len(targets) >= 0.99, (ok, len(targets), wrong)
+    assert len(wrong) <= 2, wrong

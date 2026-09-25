@@ -66,3 +66,95 @@
     <article class="tile reveal"><div class="glyph mono-glyph">{ }</div><h3>Response schema</h3><p>Every answer validates against the kit's <code>ContextDeeplinkResponse</code>.</p></article>
   </div>
 </section>
+
+<!-- ───────────────────────── Simulator ───────────────────────── -->
+<section class="section" id="simulator">
+  <div class="wrap">
+    <p class="eyebrow"><span>//</span> Simulator</p>
+    <h2 class="h2 center" data-words>Run a complaint<br>through the engine</h2>
+    <p class="aside">Pick a kit case, an unseen format, or write your own. Every run hits the live API.</p>
+  </div>
+
+  <div class="wrap sim">
+    <!-- Case picker -->
+    <div class="picker">
+      <div class="seg" role="tablist" aria-label="Case source">
+        <button role="tab" class="on" data-src="kit" aria-selected="true">Kit <em id="nKit">20</em></button>
+        <button role="tab" data-src="unseen" aria-selected="false">Unseen <em id="nUnseen">14</em></button>
+        <button role="tab" data-src="custom" aria-selected="false">Custom</button>
+      </div>
+      <div class="chips" id="caseChips" aria-label="Cases"></div>
+    </div>
+
+    <div class="sim-grid">
+      <!-- Input -->
+      <form class="card input-card" id="runForm" autocomplete="off">
+        <div class="card-head"><span class="badge">Input</span><span class="muted small" id="caseLabel">—</span></div>
+        <label class="field"><span>User query</span>
+          <textarea id="qIn" rows="4" placeholder="My Galaxy S22 screen turns completely blank…"></textarea>
+        </label>
+        <label class="field"><span>SIIS title</span>
+          <input id="tIn" type="text" placeholder="Blank or black display on a Samsung phone or tablet">
+        </label>
+        <label class="field grow"><span>SIIS content</span>
+          <textarea id="cIn" rows="12" class="mono" placeholder="## Step 1: Check for physical damage&#10;Inspect the screen for cracks…"></textarea>
+        </label>
+        <div class="btn-col">
+          <button class="btn btn-dark wide" type="submit" id="runBtn">Run troubleshoot <span class="arr">→</span></button>
+          <div class="btn-pair">
+            <button class="btn btn-soft" type="button" id="repeatBtn" disabled title="Same query again — should be an exact cache hit">Repeat</button>
+            <button class="btn btn-soft" type="button" id="paraBtn" disabled title="Reworded query, same article — should be a paraphrase hit">Paraphrase</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Output -->
+      <div class="card out-card" aria-live="polite">
+        <div class="stat-strip" id="strip">
+          <div><span>Cache</span><b id="sCache">—</b></div>
+          <div><span>Server</span><b id="sServer">—</b></div>
+          <div><span>Round trip</span><b id="sRtt">—</b></div>
+          <div><span>Grounded</span><b id="sGround">—</b></div>
+          <div><span>Format</span><b id="sFormat">—</b></div>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Output view">
+          <button role="tab" class="on" data-tab="plan" aria-selected="true">Plan</button>
+          <button role="tab" data-tab="pipe" aria-selected="false">Pipeline</button>
+          <button role="tab" data-tab="vars" aria-selected="false">Variations</button>
+          <button role="tab" data-tab="json" aria-selected="false">JSON</button>
+        </div>
+        <div class="tab-body" id="tab-plan">
+          <div class="empty" id="planEmpty">
+            <p class="h-empty">Nothing run yet.</p>
+            <p class="muted">Choose a case and press <b>Run troubleshoot</b>. The plan, its deeplinks and the checks it passed appear here.</p>
+          </div>
+          <div id="plan" hidden></div>
+        </div>
+        <div class="tab-body" id="tab-pipe" hidden><div id="pipe" class="pipe"></div></div>
+        <div class="tab-body" id="tab-vars" hidden><ol id="vars" class="vars"></ol></div>
+        <div class="tab-body" id="tab-json" hidden>
+          <button class="btn btn-soft copy" type="button" id="copyJson">Copy</button>
+          <pre id="json" class="json"></pre>
+        </div>
+      </div>
+
+      <!-- Device -->
+      <aside class="device-col" aria-label="Device simulation">
+        <div class="phone" id="phone">
+          <div class="screen">
+            <div class="status"><span id="clock">9:41</span><span class="island"></span><span class="sig">▂▄▆ ◔</span></div>
+            <div class="app" id="app">
+              <div class="app-idle">
+                <div class="app-mark">SGTE</div>
+                <p>Run a case to walk through the fix on a simulated Galaxy.</p>
+              </div>
+            </div>
+            <div class="settings" id="settings" aria-hidden="true"></div>
+            <div class="sheet" id="sheet" aria-hidden="true"></div>
+          </div>
+        </div>
+        <p class="device-note muted small">Deeplinks open a mocked Settings screen; validation deeplinks check the key the catalogue names.</p>
+      </aside>
+    </div>
+  </div>
+</section>

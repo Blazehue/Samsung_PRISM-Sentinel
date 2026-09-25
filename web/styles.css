@@ -58,3 +58,26 @@ code { font: 500 .86em var(--mono); background: rgba(0, 0, 0, .05); padding: 1px
 .muted { color: var(--muted); }
 .small { font-size: 13px; line-height: 18px; }
 .mono { font-family: var(--mono); }
+
+/* ───────── type ───────── */
+.eyebrow { margin: 0; font: 400 12px/16px var(--text); color: var(--ink); display: flex; gap: 10px; align-items: center; }
+.eyebrow > span { color: var(--faint); letter-spacing: -.72px; }
+.eyebrow.dim { color: var(--muted); }
+.on-dark, .eyebrow.on-dark { color: var(--on-dark); }
+.eyebrow.on-dark > span { color: #5c5c5c; }
+
+.h2 {
+  font: 500 clamp(38px, 4.4vw, 60px)/1.04 var(--display); letter-spacing: -.03em;
+  margin: 28px 0 0; color: var(--ink);
+}
+.h2.center { text-align: center; }
+.h2.on-dark { color: var(--on-dark); }
+.h3 { font: 500 24px/32px var(--display); letter-spacing: -.01em; margin: 10px 0 2px; }
+.aside { max-width: 260px; margin: 22px 0 0 auto; font-size: 14px; line-height: 20px; color: var(--muted); }
+
+/* word-by-word blur reveal */
+[data-words] .w { display: inline-block; white-space: pre; opacity: 0; filter: blur(10px); transform: translateY(24%);
+  transition: opacity .9s var(--ease), filter .9s var(--ease), transform .9s var(--ease); transition-delay: calc(var(--i) * 55ms); }
+[data-words].in .w { opacity: 1; filter: blur(0); transform: none; }
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s var(--ease), transform .9s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }

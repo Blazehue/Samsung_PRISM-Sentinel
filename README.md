@@ -168,3 +168,29 @@ shows the totals.
 | `query_variations`: 8–10 across formal, casual, keyword-only, frustrated, typo-inclusive | All five styles in every set, plus question and support-ticket phrasings |
 | Appendix B worked example (swipe navigation) | Reproduced as a test: same goal, title, action name and first steps. It links the real catalogue entry *View Navigation bar* where the guide's example used a placeholder |
 | Appendix C `metrics.md` report | Generated from real runs by `scripts/metrics_report.py`, including the ablation |
+
+## Results
+
+`python scripts/local_score.py` (in-process) or `--url http://host:port` (live).
+Numbers below are from the live server:
+
+| Check | Result | Threshold |
+|---|---|---|
+| G2 `/health` | `{"status":"ok"}` | 200 + ok |
+| G3 coverage | 20/20 (100%) | ≥ 95% |
+| G4 schema-valid | 20/20 (100%) | ≥ 90% |
+| G5 URL leaks | 0 | 0 |
+| A1 format rules (goal, 2–3-word title, "It will…" 5–7 words, score 0–1) | 100% clean | — |
+| A2 deeplinks: in catalogue / auto actions with a link | 100% / 100% | — |
+| A3 repeat p95 / hit rate | 0.8 ms / 100% | ≤ 300 ms / ≥ 90% |
+| A3 paraphrase hit (hand-written, never pre-warmed) | 16/16 (100%) | ≥ 80% |
+| A3 cold p95 | ~4 ms | ≤ 8 s |
+| A4 unseen formats (lists, HTML, ALL-CAPS, explainer-only, one-liners): correct / grounded steps | 14/14 · 74/74 | — |
+| A5 variations: 8–10 per query / mean pairwise Jaccard | 100% / 0.32 | 8–10, diverse |
+| **Step grounding** (every step found in the SIIS text) | **349/349 (100%)** | no invented steps |
+| **Cost per query** | **$0.00** | — |
+
+The point totals the script prints are our own estimate of the rubric, used to
+catch regressions. They are not the official score. The full Appendix C
+report, with step accuracy (2.91/3), deeplink relevance (2.00/2), latency for
+each path at N ≥ 30, and the ablation, is in [`metrics.md`](metrics.md).

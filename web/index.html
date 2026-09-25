@@ -287,3 +287,24 @@
     </article>
   </div>
 </section>
+
+<!-- ───────────────────────── FAQ ───────────────────────── -->
+<section class="section wrap faq" id="faq">
+  <div class="faq-side">
+    <p class="eyebrow"><span>//</span> FAQ</p>
+    <h2 class="h2" data-words>The questions judges ask, answered straight.</h2>
+    <div class="card faq-card">
+      <p class="small muted">Run the scorer yourself</p>
+      <pre class="snippet">python scripts/local_score.py --url <span class="base"></span></pre>
+    </div>
+  </div>
+  <div class="faq-list">
+    <details><summary>Does it ever invent a step?</summary><p>No. Steps are copied from the SIIS text and only split at sentence boundaries. The simulator's “Grounded” figure checks every step against the article on each run.</p></details>
+    <details><summary>What happens when no deeplink fits?</summary><p>If the steps open a Settings screen that the catalogue doesn't have, the group gets <code>bixby://dummy_positive</code> with a 5–7-word description naming that screen. If nothing points at Settings, the group gets no link and the action stays manual.</p></details>
+    <details><summary>How can a paraphrase be a cache hit and still be right?</summary><p>Parsing, grouping and deeplink resolution depend only on the article. A reworded query reuses that plan, and the goal name, kind and score are recomputed for the new wording. The tests check that a paraphrase hit is byte-identical to a fresh run.</p></details>
+    <details><summary>What makes an action critical?</summary><p>Anything destructive or safety-related: factory reset, clearing data, erasing, liquid or physical damage, a swollen or overheating battery. The simulator asks for confirmation before walking through them.</p></details>
+    <details><summary>What does Gemini do, and what can't it do?</summary><p>Gemini refines plans on cache misses: it names unfamiliar topics, writes "It will…" descriptions, paraphrases queries, and breaks ties between shortlisted catalogue entries. It never writes steps or deeplink URIs. Every answer is validated and time-limited, and on any failure the rules' answer is used. Results are cached in <code>data/llm_cache.json</code>, so repeats and the committed kit plans need no call.</p></details>
+    <details><summary>Where does it run?</summary><p>One container serves both this site and the API: <code>docker build -t sgte . &amp;&amp; docker run -p 8000:8000 sgte</code>. To point the site at another deployment, add <code>?api=https://host</code> to the URL.</p></details>
+  </div>
+</section>
+</main>

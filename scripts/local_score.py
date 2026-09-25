@@ -33,3 +33,22 @@ NO_VIABLE = {"What are Bixby Routines?"}        # unseen article with no instruc
 def p95(xs):
     xs = sorted(xs)
     return xs[min(len(xs) - 1, int(0.95 * len(xs)))] if xs else None
+
+
+class Client:
+    def __init__(self, url: str | None):
+        if url:
+            import httpx
+            self.c, self.base = httpx.Client(timeout=30), url.rstrip("/")
+        else:
+            from fastapi.testclient import TestClient
+            import app as app_module
+            self.c, self.base = TestClient(app_module.app).__enter__(), ""
+
+    def get(self, path):
+        return self.c.get(self.base + path)
+
+    def post(self, path, body):
+        t = time.perf_counter()
+        r = self.c.post(self.base + path, json=body)
+        return r, (time.perf_counter() - t) * 1000

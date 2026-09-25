@@ -245,3 +245,37 @@ studio template, and everything on it calls the live API.
   live API.
 
 To point the site at a different deployment, add `?api=https://host` to its URL.
+
+## Run
+
+```bash
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8000        # API + simulator at http://localhost:8000
+
+# or
+docker build -t sgte . && docker run -p 8000:8000 sgte
+# with live Gemini:  docker run -p 8000:8000 --env-file .env sgte     (.env: see .env.example)
+```
+
+**Configuration (environment only; keys never go in the repo or the image).**
+Locally, copy `.env.example` to `.env` (git- and docker-ignored) and run
+`uvicorn app:app --env-file .env`. On a host such as Render, set the same names
+as environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | unset | Enables live Gemini calls. Without it, the rules plus the committed Gemini cache still answer |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Primary model |
+| `GEMINI_FALLBACK_MODELS` | `gemini-3.1-flash-lite` | Tried on 404 / 429 / 5xx |
+| `GEMINI_TIMEOUT_S` | `4` | Per-call limit (5 s total per request) |
+| `GEMINI_STAGES` | all four | Switch stages off individually |
+| `GEMINI_PRICE_IN_PER_M` / `_OUT_PER_M` | `0` | USD per 1M tokens, for `meta.cost_usd` (0 on the free tier) |
+
+```bash
+python scripts/build_results.py          # → results.jsonl  {query, query_variations, response, meta} × 20
+python scripts/local_score.py            # gates + blocks, in-process
+python scripts/local_score.py --url https://<deployment>   # same, against the live API
+python scripts/metrics_report.py         # → metrics.md (guide Appendix C)
+python scripts/warm_llm_cache.py         # → data/llm_cache.json (needs GEMINI_API_KEY in .env)
+pip install -r requirements-dev.txt && pytest -q           # 76 tests, never call the network
+```

@@ -341,3 +341,21 @@ def retarget(response: dict, query: str, siis: dict) -> dict:
 
 
 NO_MATCH = {"contexts": [], "fallback": "no_match"}
+
+
+def _units(sec: Section) -> list[tuple[str, list[Group]]]:
+    """One action per screen/feature: a section whose groups carry their own
+    labels ("To clear the app's cache:" / "To clear the app's data:") becomes
+    one action per labelled group; unlabelled groups stay with the section."""
+    base = action_name(sec)
+    labelled = [g for g in sec.groups if g.label and label_name(g.label)]
+    if len(sec.groups) < 2 or not labelled:
+        return [(base, sec.groups)]
+    units, loose = [], [g for g in sec.groups if not (g.label and label_name(g.label))]
+    # An unlabelled lead-in before labelled groups ("You can change the font size…")
+    # introduces them; it is not an action of its own.
+    loose = [g for g in loose if not all(st.lower().startswith(("you can ", "you may ")) for st in g.steps)]
+    if loose:
+        units.append((base, loose))
+    units += [(label_name(g.label), [g]) for g in labelled]
+    return units

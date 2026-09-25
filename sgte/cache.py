@@ -113,3 +113,21 @@ class Cache:
             b.query_toks |= set(e.keywords)
             while len(self._buckets) > self._max_siis:
                 self._buckets.popitem(last=False)
+
+    def record(self, kind: str, ms: float) -> None:
+        self.latencies["hit" if kind in ("exact", "paraphrase") else "miss"].append(ms)
+
+    def summary(self) -> dict:
+        def pct(xs, p):
+            xs = sorted(xs)
+            return round(xs[min(len(xs) - 1, int(p / 100 * len(xs)))], 2) if xs else None
+        total = sum(self.stats.values())
+        hits = self.stats["exact"] + self.stats["paraphrase"]
+        return {
+            **self.stats,
+            "requests": total,
+            "hit_rate": round(hits / total, 3) if total else None,
+            "siis_cached": len(self._buckets),
+            "hit_ms": {"p50": pct(self.latencies["hit"], 50), "p95": pct(self.latencies["hit"], 95)},
+            "miss_ms": {"p50": pct(self.latencies["miss"], 50), "p95": pct(self.latencies["miss"], 95)},
+        }

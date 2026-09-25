@@ -176,3 +176,45 @@
     // Stagger siblings in a grid so cards arrive one after another.
     $$(".tile-grid, .stats, .api-grid").forEach((g) => [...g.children].forEach((c, i) => (c.style.transitionDelay = `${i * 80}ms`)));
   }
+
+  /* ───────────────────────── format rules (mirror of sgte/rules.py) ───────────────────────── */
+  const URL_RE = /(https?:\/\/\S+|www\.\S+|\S+\.(?:com|html?|net|org|in|co)\b\S*|!\[[^\]]*\]\([^)]*\)|<a\s[^>]*>|<\/a>)/gi;
+  const GOAL_RE = /^Follow these steps to perform this .+ (Troubleshooting|Configuration)\.?$/;
+  const words = (s) => String(s || "").trim().split(/\s+/).filter(Boolean);
+  const isObj = (o) => o && typeof o === "object" && !Array.isArray(o);
+
+  function schemaOk(r) {
+    if (!isObj(r) || !Array.isArray(r.contexts)) return false;
+    return r.contexts.every((g) => isObj(g) && typeof g.goal === "string" && typeof g.title === "string" && typeof g.score === "number"
+      && Array.isArray(g.actions) && g.actions.every((a) => isObj(a) && typeof a.actionName === "string" && typeof a.description === "string"
+      && (a.category == null || ["auto", "manual", "critical"].includes(a.category)) && Array.isArray(a.stepGroups)
+      && a.stepGroups.every((sg) => isObj(sg) && Array.isArray(sg.steps) && sg.steps.every((s) => typeof s === "string")
+        && (sg.actionableDeeplink == null || (typeof sg.actionableDeeplink.deeplink === "string" && typeof sg.actionableDeeplink.description === "string"))
+        && (sg.validationDeeplink == null || (typeof sg.validationDeeplink.deeplink === "string" && typeof sg.validationDeeplink.key === "string")))));
+  }
+  function urlLeaks(r) {
+    return (JSON.stringify(r).match(URL_RE) || []).filter((u) => !u.startsWith("bixby://"));
+  }
+  function checks(r) {
+    const ctx = (r && r.contexts) || [];
+    const acts = ctx.flatMap((g) => g.actions || []);
+    const groups = acts.flatMap((a) => a.stepGroups || []);
+    const links = groups.flatMap((sg) => [sg.actionableDeeplink, sg.validationDeeplink]).filter(Boolean);
+    return [
+      ["schema", schemaOk(r)],
+      ["goal", ctx.length > 0 && ctx.every((g) => GOAL_RE.test(g.goal))],
+      ["title 2–3w", ctx.every((g) => { const n = words(g.title).length; return n >= 2 && n <= 3; })],
+      ["desc 5–7w", acts.length > 0 && acts.every((a) => a.description.startsWith("It will") && words(a.description).length >= 5 && words(a.description).length <= 7)],
+      ["score 0–1", ctx.every((g) => g.score >= 0 && g.score <= 1)],
+      ["steps", groups.length > 0 && groups.every((sg) => sg.steps.length && sg.steps.every((s) => s.trim()))],
+      ["auto→link", acts.every((a) => a.category !== "auto" || a.stepGroups.every((sg) => sg.actionableDeeplink))],
+      ["bixby://", links.every((l) => l.deeplink.startsWith("bixby://"))],
+      ["no URLs", urlLeaks(r).length === 0],
+    ];
+  }
+  const canon = (s) => String(s).toLowerCase().replace(/[’]/g, "'").replace(/[“”]/g, '"').replace(/[^a-z0-9]+/g, " ").trim();
+  function grounding(r, siis) {
+    const src = canon(`${siis.title || ""}\n${siis.content || ""}`.replace(/<[^>]+>/g, " "));
+    const steps = ((r && r.contexts) || []).flatMap((g) => g.actions.flatMap((a) => a.stepGroups.flatMap((sg) => sg.steps)));
+    return [steps.filter((s) => src.includes(canon(s))).length, steps.length];
+  }

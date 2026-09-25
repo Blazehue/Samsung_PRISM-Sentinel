@@ -117,3 +117,23 @@ def catalogue_sweep(matcher):
         else:
             scores.append(0)
     return statistics.mean(scores), pct(lat, 95), sum(s == 2 for s in scores) / len(scores), len(scores)
+
+
+# ------------------------------------------------------------------ ablation matchers
+def shipped(steps):
+    m = CAT.match("Change the setting", steps)
+    return m.entry if m else None
+
+
+_texts = [f"{e.message} {e.description} {e.qna}" for e in CAT.entries]
+_vecs = [embed(t) for t in _texts]
+
+
+def hybrid_bm25_dense(steps):
+    """Variant A: BM25 over the step text + hashed dense-embedding cosine, top-1, no rules."""
+    q = tokens(" ".join(steps))
+    qv = embed(" ".join(steps))
+    top = CAT.bm25.top(q, k=30)
+    mx = max((s for _, s in top), default=1) or 1
+    best = max(top, key=lambda t: 0.6 * t[1] / mx + 0.4 * cosine(qv, _vecs[t[0]]), default=None)
+    return CAT.entries[best[0]] if best and best[1] > 0 else None

@@ -93,3 +93,20 @@ app = FastAPI(title="Smart Guided Troubleshooting Engine", version="1.0.0", life
 # expose_headers: a simulator hosted elsewhere (?api=…) can still read cache/latency.
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
                    expose_headers=["X-Cache", "X-Cache-Hit", "X-Latency-Ms", "X-Cost-Usd"])
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok"}
+
+
+ENGINE = "sgte-v1"
+
+
+def _meta(ms: float, hit: bool, ru: llm.RequestUsage) -> dict:
+    """Guide §2/[4] and Appendix B: operational metadata with every answer.
+    model: the LLM this deployment refines plans with (or the rules-only engine);
+    llm_calls: live Gemini calls this request made (0 on cache hits)."""
+    model = llm.MODEL if (llm.enabled() or ru.memo_hits) else f"{ENGINE}-deterministic"
+    return {"latency_ms": round(ms, 2), "cache_hit": hit, "model": model,
+            "cost_usd": round(ru.cost_usd, 6), "llm_calls": ru.calls}

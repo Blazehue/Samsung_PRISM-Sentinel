@@ -61,3 +61,29 @@ class Enriched:
     is_issue: bool = True
     normalised: str = ""
     keywords: list[str] = field(default_factory=list)
+
+
+def _clean(q: str) -> str:
+    q = re.sub(r"^\s*\d+\.\s*", "", q or "")          # "1. My phone…"
+    return re.sub(r"\s+", " ", q.strip().strip("\"'“”")).strip()
+
+
+def symptoms_of(text: str, by_position: bool = False) -> list[str]:
+    """Symptoms named in the text — by table priority (curated titles) or by
+    where they first appear (user complaints lead with the main problem)."""
+    low = (text or "").lower()
+    hits = [(m.start(), i, name) for i, (pat, name) in enumerate(SYMPTOMS) if (m := re.search(pat, low))]
+    hits.sort(key=(lambda h: (h[0], h[1])) if by_position else (lambda h: h[1]))
+    return [name for _, _, name in hits]
+
+
+def enrich(query: str) -> Enriched:
+    q = _clean(query)
+    m = DEVICE.search(q)
+    device = re.sub(r"\s+", " ", m.group(1)).strip() if m else None
+    syms = symptoms_of(q, by_position=True)
+    kw = [t for t in tokens(q) if len(t) > 2]
+    normalised = " ".join(dict.fromkeys(kw))
+    is_issue = bool(ISSUE_WORDS.search(q)) and not HOW_TO.search(q)
+    return Enriched(raw=q, device=device, symptoms=syms, is_issue=is_issue,
+                    normalised=normalised, keywords=kw)

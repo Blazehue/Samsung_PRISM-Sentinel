@@ -49,3 +49,26 @@ VERB_PHRASE = {
     "troubleshooting": "troubleshoot", "fix": "fix", "connect": "connect", "swipe": "use swipe",
     "configure": "configure", "manage": "manage", "set": "set up", "choose": "choose", "change": "change",
 }
+
+
+def _words(s: str) -> list[str]:
+    return [w for w in re.split(r"\s+", s.strip()) if w]
+
+
+def _trim(ws: list[str], n: int) -> list[str]:
+    ws = ws[:n]
+    while ws and ws[-1].lower().strip(",.") in TRAILING_BAD:
+        ws.pop()
+    return ws
+
+
+# ---------------------------------------------------------------- naming
+# Where a title stops naming the *thing* and starts describing its state:
+# "SIM card not detected" → "SIM Card", "Camera keeps stopping" → "Camera".
+STATE_WORDS = {"not", "no", "never", "won't", "wont", "can't", "cant", "doesn't", "doesnt", "isn't", "isnt",
+               "is", "are", "was", "keeps", "keep", "stops", "stopped", "fails", "failed", "won", "does", "has"}
+
+
+def _unshout(text: str) -> str:
+    """'DARK MODE' → 'Dark Mode'; short acronyms (SIM, USB, PC) stay."""
+    return re.sub(r"\b[A-Z]{4,}\b", lambda m: m.group(0).capitalize(), text)

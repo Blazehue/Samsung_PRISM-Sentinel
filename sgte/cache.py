@@ -62,3 +62,17 @@ class Cache:
                     return retarget(plan, query, siis), "paraphrase"
             self.stats["miss"] += 1
             return None, "miss"
+
+    def lookup_query(self, query: str) -> tuple[dict | None, dict | None]:
+        """Guide §5: when siis_response is omitted, find the pre-warmed scenario
+        this query is about. Scored by overlap with the cached phrasings (and the
+        article text); a clear winner is required. If there's none, Gemini's
+        canonical rewording of the query gets one more try."""
+        b = self._best_bucket(query)
+        if b is None and llm.available("understand"):
+            canon = llm.canonical(query, deadline=time.monotonic() + 3.0)
+            if canon:
+                b = self._best_bucket(canon)
+        if b is None:
+            return None, None
+        return retarget(copy.deepcopy(b.plan), query, b.siis), b.siis

@@ -171,3 +171,25 @@ def test_simulator_endpoints(client):
     seen = {g["link"]["message"] for s in insp["sections"] for g in s["groups"] if g["link"]}
     real = {"dummy_positive" if m.startswith("Open ") and m.endswith("device Settings") else m for m in real}
     assert real <= seen and [o["actionName"] for o in insp["order"]] == [a["actionName"] for a in resp["contexts"][0]["actions"]]
+
+
+def test_site_is_served_without_shadowing_the_api(client):
+    page = client.get("/")
+    assert page.status_code == 200 and "SGTE" in page.text
+    assert client.get("/styles.css").status_code == 200 and client.get("/app.js").status_code == 200
+    assert client.get("/health").json() == {"status": "ok"}
+
+
+# ---------------------------------------------------------------- deeplink matcher regressions
+def _link(steps, name="Change the setting"):
+    m = get_catalog().match(name, steps)
+    return m and m.entry.message
+
+
+def test_polarity_reads_turn_it_off_and_last_mention():
+    assert _link(["Swipe down to open the Quick settings panel and tap Do not disturb to turn it off."]) == "Disable Do not disturb"
+    assert _link(["Open Settings, tap Connections, then tap Wi-Fi and turn it on."]) == "Enable WiFi"
+
+
+def test_exact_label_beats_partial_match():
+    assert _link(["Open Settings, tap Connections, and then tap Bluetooth."]) == "View Bluetooth"      # not "Bluetooth scanning"

@@ -447,3 +447,29 @@ def troubleshoot(query: str, siis: dict) -> dict:
 
     h = goal_header(query, siis, deadline=started + LLM_BUDGET_S)   # shares the request's Gemini budget
     actions = []
+    for sec in sections:
+        for name, raw_groups in _units(sec):
+            groups = [step_group(name, [p for st in g.steps for p in split_interactions(st)]) for g in raw_groups if g.steps]
+            if not groups:
+                continue
+            cat = _category(name, groups)
+            if cat == "manual" and any(g["actionableDeeplink"] for g in groups):
+                # Guide: a manual action cannot carry a deeplink — the linked
+                # groups become their own auto action on that screen.
+                linked = [g for g in groups if g["actionableDeeplink"]]
+                rest = [g for g in groups if not g["actionableDeeplink"]]
+                parts = [(name, linked, "auto"), (f"{name} (Other Steps)" if linked else name, rest, "manual")]
+            else:
+                parts = [(name, groups, cat)]
+            for nm, gs, c in parts:
+                # Untitled document: the "section" is the whole article, describe the goal.
+                whole = sec.title == title and nm == action_name(sec)
+                desc = _whole_doc_desc(h["name"], h["issue"]) if whole else description(nm)
+                if c == "manual":
+                    for g in gs:              # belt and braces: manual never carries links
+                        g["actionableDeeplink"] = g["validationDeeplink"] = None
+                rank = RANK[c] + (1 if c == "manual" and ESCALATION.search(nm + " " + " ".join(x for g in gs for x in g["steps"])) else 0)
+                item = {"actionName": nm, "description": desc, "stepGroups": gs, "category": c}
+                if whole:
+                    item["_goal_desc"] = True     # re-aimed per query by retarget(); not LLM-described
+                actions.append((rank, len(actions), item))

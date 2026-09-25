@@ -55,3 +55,37 @@ flowchart LR
     L --> M[(llm_cache.json<br/>persistent Gemini cache)]
     D2 -- pre-warm at startup --> C
 ```
+
+### Request pipeline
+
+The stages follow the Theme 2 guide's §2 pipeline:
+
+```
+Raw complaint (+ SIIS knowledge text)
+  │
+  ├─► [0] Query enrichment          sgte/enrich.py
+  │       device model · first-mentioned symptom · fix vs how-to · keyword cache key
+  │       8–10 paraphrases across registers (sgte/variations.py)
+  │
+  ├─► [1] Structure extraction      sgte/parse.py + sgte/engine.py
+  │       headers / Step N: / "To …:" group labels / lists / prose → sections
+  │       one Action per screen or feature · one physical interaction per step
+  │       steps copied from the article, never invented (sgte/grounding.py checks)
+  │
+  ├─► [2] Deeplink mapping & ordering   sgte/catalog.py + sgte/engine.py
+  │       exact on-screen label → catalogue entry, else BM25 with precision filters,
+  │       else bixby://dummy_positive naming the screen; validation copied verbatim
+  │       auto (Settings) → manual → escalations → critical (restart, reset, safe mode)
+  │
+  ├─► [2b] Gemini refinement (cache misses only)   sgte/llm.py
+  │       topic for unfamiliar articles · "It will…" descriptions · closed-set pick for
+  │       placeholder links · paraphrases; validated, 5 s budget, model fallback chain
+  │
+  ├─► [3] Fast-path semantic cache   sgte/cache.py
+  │       hit  (< 1 ms): exact query, or a rewording about the same article
+  │       miss: run [0]–[2], validate against schema.py, store
+  │       no article sent: semantic lookup across pre-warmed scenarios
+  │
+  └─► [4] REST API service          app.py
+          JSON body + meta {latency_ms, cache_hit, model, cost_usd}; fallback "no_match" / "no_siis_context"
+```

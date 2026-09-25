@@ -159,3 +159,23 @@ def main() -> None:
     mean_sim = statistics.mean(sims) if sims else 1
     out["blocks"]["A5_variations"] = {"8_to_10": f"{in_range:.0%}", "mean_pairwise_jaccard": round(mean_sim, 3),
                                       "points": round(5 * in_range * (1 if mean_sim < 0.5 else 0.5), 1)}
+
+    # Product metrics (brochure)
+    g_ok = g_all = 0
+    for r, x in zip(rows, responses):
+        a, b = grounding_rate(x, r["siis_response"])
+        g_ok, g_all = g_ok + a, g_all + b
+    out["metrics"] = {"step_grounding": f"{g_ok}/{g_all} ({g_ok / g_all:.1%})",
+                      "canonical_p50_ms": round(statistics.median(lat), 1), "canonical_p95_ms": round(p95(lat), 1),
+                      "server": cli.get("/v1/metrics").json()}
+
+    total = sum(b["points"] for b in out["blocks"].values())
+    out["gates_pass"] = gates_ok
+    out["automated_points"] = f"{total:.1f}/60"
+    print(json.dumps(out, indent=2, ensure_ascii=False))
+    if args.json:
+        Path(args.json).write_text(json.dumps(out, indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

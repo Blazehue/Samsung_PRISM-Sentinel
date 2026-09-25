@@ -38,3 +38,20 @@ def test_every_case_is_format_clean_and_grounded(query, siis):
     assert format_errors(out, get_catalog().uris) == []
     ok, total = grounding_rate(out, siis)
     assert total and ok == total, "a step is not verbatim from the SIIS text"
+
+
+def test_description_is_5_to_7_words():
+    for name in ["Force a Restart", "Samsung Authorized Service Centers", "What is Casting?", "Charger Issues",
+                 "Touchscreen doesn't work but the screen is still", "Exit", "Attempt to Power On"]:
+        d = description(name)
+        assert d.startswith("It will") and 5 <= len(words(d)) <= 7, d
+
+
+def test_deeplinks_resolve_to_the_named_setting():
+    by_id = {r["id"]: r for r in KIT}
+    msgs = lambda rid: {sg["actionableDeeplink"]["message"]
+                        for a in troubleshoot(by_id[rid]["original_query"], by_id[rid]["siis_response"])["contexts"][0]["actions"]
+                        for sg in a["stepGroups"] if sg["actionableDeeplink"]}
+    assert {"View WiFi Settings", "Open Clear cache in device Settings"} <= msgs("row_1")
+    assert "Enable Edge panels" in msgs("row_7")
+    assert {"Enable Touch sensitivity", "Disable Touch sensitivity", "View Reset Options"} <= msgs("row_21")

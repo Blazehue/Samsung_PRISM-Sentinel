@@ -72,3 +72,18 @@ def begin_request() -> RequestUsage:
     ru = RequestUsage()
     _request.set(ru)
     return ru
+
+
+def enabled(stage: str | None = None) -> bool:
+    """A live call is possible: a key is set and the stage is switched on."""
+    return bool(os.getenv("GEMINI_API_KEY")) and (stage is None or stage in STAGES)
+
+
+def available(stage: str) -> bool:
+    """Gemini output can be used: live, or memoised from an earlier call."""
+    return stage in STAGES and (enabled(stage) or bool(_memo))
+
+
+def _memo_key(stage: str, payload) -> str:
+    raw = json.dumps([stage, MODEL, payload], sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(raw.encode()).hexdigest()[:24]

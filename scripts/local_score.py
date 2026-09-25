@@ -105,3 +105,34 @@ def main() -> None:
                             links += 1
                             bad_links += sg[k]["deeplink"] not in uris
                     linked += bool(sg.get("actionableDeeplink"))
+    validity = 1 - bad_links / links if links else 1.0
+    auto_rate = auto_ok / autos if autos else 1.0
+    out["blocks"]["A2_deeplinks"] = {"links": links, "valid": f"{validity:.0%}", "auto_with_link": f"{auto_rate:.0%}",
+                                     "stepgroups_linked": f"{linked}/{groups}",
+                                     "points": round(15 * (0.6 * validity + 0.4 * auto_rate), 1)}
+
+    # A3 — cache: repeats, paraphrases, cold
+    rep = []
+    for _ in range(3):
+        for r in rows:
+            resp, ms = cli.post("/v1/troubleshoot", {"query": r["original_query"], "siis_response": r["siis_response"]})
+            rep.append((ms, resp.headers.get("x-cache", "miss") != "miss"))
+    # Hand-written paraphrases, never pre-warmed (our own variations would be exact hits).
+    para, by_id = [], {r["id"]: r for r in rows}
+    for rid, qs in json.loads(PARA.read_text())["paraphrases"].items():
+        for q in qs:
+            resp, ms = cli.post("/v1/troubleshoot", {"query": q, "siis_response": by_id[rid]["siis_response"]})
+            para.append(resp.headers.get("x-cache", "miss") != "miss")
+    cold = []
+    for c in unseen:
+        salted = {"title": c["siis_response"]["title"],
+                  "content": c["siis_response"]["content"] + f"\n{time.time_ns()}"}
+        cold.append(cli.post("/v1/troubleshoot", {"query": c["query"], "siis_response": salted})[1])
+    rep_p95, rep_hit = p95([m for m, _ in rep]), sum(h for _, h in rep) / len(rep)
+    para_hit, cold_p95 = sum(para) / len(para), p95(cold)
+    a3 = (5 * (rep_p95 <= 300 and rep_hit >= 0.9) + 5 * (para_hit >= 0.8) + 5 * (cold_p95 <= 8000))
+    out["blocks"]["A3_cache"] = {"repeat_p95_ms": round(rep_p95, 1), "repeat_hit": f"{rep_hit:.0%}",
+                                 "paraphrase_hit": f"{para_hit:.0%}", "cold_p95_ms": round(cold_p95, 1), "points": a3}
+
+    # A4 — unseen SIIS: format-clean and grounded
+    ok, g_ok, g_all = 0, 0, 0

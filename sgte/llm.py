@@ -226,3 +226,25 @@ def pick_deeplinks(groups: list[dict], deadline: float | None = None) -> list[st
               "Never invent ids. Return JSON {\"choices\": [id or \"none\", ...]} in group order.\n\n" +
               json.dumps(groups, ensure_ascii=False))
     return ask("rerank", prompt, groups, ok, deadline=deadline)
+
+
+def describe(actions: list[dict], deadline: float | None = None) -> list[str] | None:
+    """One "It will …" description (5–7 words) per action, in plain benefit language."""
+    def ok(d):
+        ds = d.get("descriptions")
+        if not isinstance(ds, list) or len(ds) != len(actions):
+            return None
+        out = []
+        for s in ds:
+            s = _clean(s).rstrip(".")
+            if not (s.startswith("It will ") and 5 <= len(s.split()) <= 7) or URLISH.search(s):
+                return None
+            out.append(s)
+        return out
+    prompt = ("For each troubleshooting action, write a description that starts with \"It will\", is 5 to 7 words "
+              "in total, has no final period, and says in plain language what the action does for the user. Base it "
+              "only on the action name and steps. Do not promise an outcome the steps cannot guarantee: an action that "
+              "checks, tests or contacts someone should say it checks, tests or gets help (e.g. \"It will check your "
+              "Wi-Fi connection\", \"It will get help from your provider\"), not that it fixes the problem. Return JSON "
+              "{\"descriptions\": [...]} in the same order.\n\n" + json.dumps(actions, ensure_ascii=False))
+    return ask("describe", prompt, {"v": 2, "actions": actions}, ok, deadline=deadline)

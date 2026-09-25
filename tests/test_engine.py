@@ -423,3 +423,21 @@ def test_gemini_failure_leaves_the_deterministic_plan(gemini):
     out = troubleshoot(r["original_query"], r["siis_response"])
     assert out["contexts"] and format_errors(out, get_catalog().uris) == []
     assert L.usage["failures"] > 0
+
+
+def test_gemini_rerank_is_kept_on_the_screen_the_rules_found(gemini):
+    """A pick that names a different setting than the placeholder's screen is discarded."""
+    script, _ = gemini
+    cat = get_catalog()
+    wrong = next(e for e in cat.entries if e.message == "Adjust Timeout")
+    script["*"] = json.dumps({"choices": [wrong.id]})
+    siis = {"title": "Aspect ratio", "content": "## Change the aspect ratio\nOpen Settings, tap Display, and then tap Phone aspect ratio."}
+    out = troubleshoot("screen looks stretched", siis)
+    links = [sg["actionableDeeplink"]["message"] for a in out["contexts"][0]["actions"] for sg in a["stepGroups"] if sg["actionableDeeplink"]]
+    assert "Adjust Timeout" not in links
+
+
+def test_crackling_audio_is_not_a_cracked_screen():
+    from sgte.enrich import symptoms_of
+    assert "Cracked Screen" not in symptoms_of("Crackling or buzzing sound during calls")
+    assert symptoms_of("My screen is cracked")[0] == "Cracked Screen"

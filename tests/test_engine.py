@@ -441,3 +441,25 @@ def test_crackling_audio_is_not_a_cracked_screen():
     from sgte.enrich import symptoms_of
     assert "Cracked Screen" not in symptoms_of("Crackling or buzzing sound during calls")
     assert symptoms_of("My screen is cracked")[0] == "Cracked Screen"
+
+
+def test_gemini_never_blocks_a_cache_hit_or_blows_the_budget(gemini, monkeypatch):
+    import time as _t
+    script, calls = gemini
+    slow = {"n": 0}
+
+    def sleepy(model, prompt, temperature, timeout):
+        slow["n"] += 1
+        _t.sleep(min(timeout, 0.2))
+        return None, 0, 0, None                    # every model times out
+    monkeypatch.setattr(_llm, "_call", sleepy)
+    siis = {"title": "Crackling or buzzing sound during calls",
+            "content": "## Check the call audio\nOpen Settings, tap Sounds and vibration, and then tap Sound quality and effects."}
+    c = Cache()
+    t = _t.perf_counter()
+    plan = troubleshoot("my speaker buzzes on calls", siis)
+    assert plan["contexts"] and (_t.perf_counter() - t) < 6.0          # within the 5 s Gemini budget
+    c.store("my speaker buzzes on calls", siis, plan)
+    n = slow["n"]
+    _, kind = c.lookup("speaker keeps buzzing during phone calls", siis)
+    assert kind == "paraphrase" and slow["n"] == n                     # the hit made no live call

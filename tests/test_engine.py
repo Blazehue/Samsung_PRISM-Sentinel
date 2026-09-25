@@ -110,3 +110,21 @@ def test_variations_count_and_diversity():
         vs = variations(r["original_query"])
         assert 8 <= len(vs) <= 10 and len(set(vs)) == len(vs)
         assert not any(url_leaks(v) for v in vs)
+
+
+def test_cache_paraphrase_equals_fresh_answer():
+    c, r = Cache(), KIT[1]
+    c.store(r["original_query"], r["siis_response"], troubleshoot(r["original_query"], r["siis_response"]))
+    q = "no text shows, just a blank white display on my S22"
+    got, kind = c.lookup(q, r["siis_response"])
+    assert kind == "paraphrase" and got == troubleshoot(q, r["siis_response"])
+    assert c.lookup("how do I bake bread", r["siis_response"])[1] == "miss"
+
+
+def test_api_health_and_troubleshoot(client):
+    assert client.get("/health").json() == {"status": "ok"}
+    r = client.post("/v1/troubleshoot", json={"query": KIT[0]["original_query"], "siis_response": KIT[0]["siis_response"]})
+    assert r.status_code == 200 and r.headers["x-cache"] in ("exact", "paraphrase")
+    assert format_errors(r.json()) == []
+    r = client.post("/v1/troubleshoot", json=UNSEEN[0])
+    assert r.status_code == 200 and r.json()["contexts"]

@@ -130,3 +130,32 @@ def ask(stage: str, prompt: str, payload, validate, temperature: float = 0.0, de
         return _memo[key]
     if not live or not enabled(stage):
         return None
+    for model in [MODEL] + [m for m in FALLBACK_MODELS if m != MODEL]:
+        remaining = (deadline - time.monotonic()) if deadline else TIMEOUT_S
+        if remaining < 0.3:
+            break
+        text, tin, tout, status = _call(model, prompt, temperature, min(TIMEOUT_S, remaining))
+        cost = (tin * PRICE_IN + tout * PRICE_OUT) / 1e6
+        with _lock:
+            usage["calls"] += 1
+            usage["input_tokens"] += tin
+            usage["output_tokens"] += tout
+            usage["cost_usd"] += cost
+        if ru:
+            ru.calls += 1
+            ru.cost_usd += cost
+        if text is None:
+            if status in (None, 404, 429, 500, 502, 503, 504):
+                continue                             # overloaded / retired / slow: next model
+            break
+        try:
+            out = validate(json.loads(text))
+        except Exception:
+            out = None
+        if out is not None:
+            with _lock:
+                _memo[key] = out
+                _dirty = True
+            if ru:
+                ru.models.add(model)
+            return out

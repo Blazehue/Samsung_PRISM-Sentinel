@@ -148,3 +148,35 @@ def pure_rules(steps):
             cands = [CAT.entries[i] for i in ids]
             return max(cands, key=lambda e: (e.message.startswith(pol), not e.message.startswith("Disable")))
     return None
+
+
+# ------------------------------------------------------------------ 3/4. latency, cache
+def latency_and_cache():
+    exact, para_hand, para_gen, cold = [], [], [], []
+    hits_hand = hits_gen = 0
+    c = Cache()
+    for r in KIT:                                   # a cache warmed with the originals only
+        c.store(r["original_query"], r["siis_response"], troubleshoot(r["original_query"], r["siis_response"]))
+    by_id = {r["id"]: r for r in KIT}
+    for _ in range(2):
+        for r in KIT:
+            (resp, kind), ms = timed(c.lookup, r["original_query"], r["siis_response"])
+            exact.append(ms)
+    for rid, qs in PARA.items():
+        for q in qs:
+            (resp, kind), ms = timed(c.lookup, q, by_id[rid]["siis_response"])
+            para_hand.append(ms)
+            hits_hand += kind != "miss"
+    for r in KIT:                                   # generated rewordings are unseen by this cache
+        for q in variations(r["original_query"]):
+            (resp, kind), ms = timed(c.lookup, q, r["siis_response"])
+            para_gen.append(ms)
+            hits_gen += kind != "miss"
+    for i, (q, s) in enumerate([(r["original_query"], r["siis_response"]) for r in KIT] +
+                               [(u["query"], u["siis_response"]) for u in UNSEEN]):
+        salted = {"title": s["title"], "content": s["content"] + f"\n{i}{time.time_ns()}"}
+        _, ms = timed(troubleshoot, q, salted)
+        cold.append(ms)
+    return {"exact": exact, "para": para_hand + para_gen, "cold": cold,
+            "hit_hand": hits_hand / len(para_hand), "n_hand": len(para_hand),
+            "hit_gen": hits_gen / len(para_gen), "n_gen": len(para_gen)}

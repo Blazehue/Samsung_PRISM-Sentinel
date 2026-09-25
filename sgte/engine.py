@@ -218,3 +218,32 @@ def _finish(p: str) -> str:
     p = p.strip().rstrip(",;:")
     p = p[:1].upper() + p[1:]
     return p if p.endswith((".", "!", "?")) else p + "."
+
+
+def split_interactions(step: str) -> list[str]:
+    """Guide §4.1 — one physical interaction per step:
+    "Navigate to Settings, tap Display, and then tap Screen timeout." →
+    "Navigate to Settings." / "Tap Display." / "Tap Screen timeout."
+    Separators are kept verbatim when a piece has to be re-attached ("enter"
+    alone is not an interaction), so every piece stays a substring of the source."""
+    from .parse import is_imperative
+    # A piece is an interaction if it's an instruction of ≥ 2 words that doesn't
+    # dangle ("search for" + "and select X" → "Search for and select X").
+    ok = lambda p: is_imperative(p) and len(p.split()) >= 2 and p.split()[-1].lower() not in DANGLING
+    bits = SPLIT_KEEP.split(step.rstrip("."))
+    pieces, seps = bits[0::2], bits[1::2] + [""]
+    out, carry = [], ""
+    for piece, sep in zip(pieces, seps):
+        cur = carry + piece
+        if ok(cur):
+            out.append(cur)
+            carry = ""
+        else:
+            carry = cur + sep        # "enter" + " and " → joins the next piece
+    if carry.strip():
+        if out:
+            out[-1] = out[-1] + seps[-2] + carry if len(seps) > 1 else out[-1] + carry
+        else:
+            out.append(carry)
+    out = [p for p in out if p.strip()]
+    return [_finish(p) for p in out] if len(out) > 1 else [step]

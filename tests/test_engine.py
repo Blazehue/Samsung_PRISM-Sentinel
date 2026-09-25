@@ -337,3 +337,24 @@ def test_open_only_steps_open_the_page_not_a_toggle():
         assert m and not m.entry.message.startswith(("Enable", "Disable")) and page in m.entry.description.lower()
     m = get_catalog().match("x", ["Open Settings, tap Battery protection, and then tap the switch to turn it on."])
     assert m.entry.message == "Enable Battery protection"
+
+
+def test_shared_message_resolves_to_the_named_page():
+    # "View Notification Settings" is the message of 21 pages; the description picks the right one.
+    m = get_catalog().match("x", ["Open Settings, and then tap Notification settings."])
+    assert "notification settings settings page" in m.entry.description.lower()
+
+
+def test_catalogue_setting_named_like_a_button_is_kept():
+    assert "found" in _link(["Open Settings, and then tap Allow phone to be found remotely."])
+    assert _link(["On your TV, select Allow on your TV."]) is None           # a prompt, not a setting
+
+
+def test_value_setting_steps_prefer_the_adjust_entry():
+    m = get_catalog().match("x", ["Navigate to Settings, tap Display, and then tap Screen zoom.", "Drag the slider to the right."])
+    assert m.entry.message == "Adjust Screen zoom"
+    assert _link(["Open Settings, tap Display, and then tap Screen zoom."]) == "View Screen zoom"
+
+
+# ---------------------------------------------------------------- Gemini layer (stubbed: never the network)
+from sgte import llm as _llm

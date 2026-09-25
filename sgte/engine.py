@@ -309,3 +309,18 @@ def _whole_doc_desc(gname: str, issue: bool) -> str:
         if 5 <= len(out) <= 7:
             return PHRASES.sub(lambda m: m.group(0).title(), " ".join(out))
     return description(gname)
+
+
+def goal_header(query: str, siis: dict, deadline: float | None = None, live: bool = True) -> dict:
+    """The query-dependent part of a response: goal name, kind and score."""
+    enriched = enrich(query)
+    title = strip_urls(clean_markup(str(siis.get("title") or ""))).strip()     # same cleaning as parse_siis
+    content = str(siis.get("content") or "")
+    gname = goal_name(title, enriched.raw, clean_markup(content)[:600], deadline=deadline, live=live)
+    issue = not HOW_TO.search(enriched.raw) and (enriched.is_issue or bool(ISSUE_WORDS.search(title)))
+    kind = "Troubleshooting" if issue else "Configuration"
+    sym_agree = bool(set(symptoms_of(title + " " + content[:2000])) & set(enriched.symptoms))
+    # Guide §4.1 "exact syntax" and both official examples: no trailing period.
+    return {"name": gname, "issue": issue, "siis_title": title, "title": sentence_case(gname),
+            "goal": f"Follow these steps to perform this {gname} {kind}",
+            "score": _score(set(enriched.keywords), set(tokens(title + " " + content)), sym_agree)}

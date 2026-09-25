@@ -173,3 +173,29 @@ def save_memo() -> bool:
         MEMO_FILE.write_text(json.dumps(dict(sorted(_memo.items())), indent=1, ensure_ascii=False) + "\n")
         _dirty = False
         return True
+
+
+# ------------------------------------------------------------------ stages
+def _clean(s: str) -> str:
+    return re.sub(r"\s+", " ", str(s)).strip()
+
+
+def topic(title: str, head: str, deadline: float | None = None, live: bool = True) -> str | None:
+    """2–3-word topic of an article the symptom lexicon doesn't cover."""
+    def ok(d):
+        t = _clean(d.get("topic", ""))
+        return t if 2 <= len(t.split()) <= 3 and re.fullmatch(r"[A-Za-z0-9][\w\- ]*", t) and not URLISH.search(t) else None
+    prompt = ("You name troubleshooting topics for Samsung Galaxy support articles. Give the topic of this article in "
+              "2 or 3 words, Title Case, naming the feature or symptom (e.g. \"Screen Timeout\", \"Wi-Fi Calling\"). "
+              "Return JSON {\"topic\": \"...\"}.\n\nTitle: " + json.dumps(title) + "\nStart of article: " + json.dumps(head[:600]))
+    return ask("understand", prompt, {"t": title, "h": head[:600]}, ok, deadline=deadline, live=live)
+
+
+def canonical(query: str, deadline: float | None = None) -> str | None:
+    """Colloquial complaint → a short canonical technical query."""
+    def ok(d):
+        c = _clean(d.get("canonical", ""))
+        return c if 2 <= len(c.split()) <= 20 and not URLISH.search(c) else None
+    prompt = ("Rewrite this Samsung Galaxy device complaint as a short canonical technical support query (device "
+              "feature + symptom, at most 12 words). Return JSON {\"canonical\": \"...\"}.\n\nComplaint: " + json.dumps(query))
+    return ask("understand", prompt, {"q": query}, ok, deadline=deadline)

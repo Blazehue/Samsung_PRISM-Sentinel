@@ -464,3 +464,107 @@
     put("pc-compose", g ? `${ch.filter(([, v]) => v).length}/${ch.length} rules pass<small>${esc(g.goal)}</small>` : "No contexts");
     put("pc-cache", `${esc(ts.cache || "—")} · ${fmtMs(ts.server)}<small>round trip ${fmtMs(ts.rtt)} from this browser</small>`);
   }
+
+  /* ───────────────────────── phone ───────────────────────── */
+  const phone = (() => {
+    const app = $("#app"), settings = $("#settings"), sheet = $("#sheet");
+    let plan = null, seq = [], i = 0, confirmed = new Set(), verified = new Set();
+
+    const screenName = (dl) => {
+      let m = (dl.message || dl.description || "Settings").replace(/\s+in device Settings$/i, "");
+      m = m.replace(/^(View|Enable|Disable|Open|Check|Diagnose|Set|Turn on|Turn off)\s+/i, "");
+      return m || "Settings";
+    };
+    const polarity = (dl) => (/^Enable\b/i.test(dl.message || "") ? "on" : /^Disable\b/i.test(dl.message || "") ? "off" : "view");
+
+    function load(r) {
+      plan = r.contexts && r.contexts[0];
+      seq = [];
+      confirmed = new Set(); verified = new Set();
+      if (plan) plan.actions.forEach((a, ai) => a.stepGroups.forEach((g, gi) => g.steps.forEach((s, si) =>
+        seq.push({ ai, gi, si, a, g, text: s, n: g.steps.length }))));
+      i = 0;
+      closeSettings(); closeSheet();
+      render();
+    }
+    function jumpToAction(ai) {
+      const k = seq.findIndex((x) => x.ai === ai);
+      if (k >= 0) { i = k; closeSettings(); render(); }
+    }
+    function render() {
+      if (!plan) { app.innerHTML = `<div class="app-idle"><div class="app-mark">SGTE</div><p>No plan for this article — nothing to walk through.</p></div>`; return; }
+      if (i >= seq.length) {
+        const opened = new Set(seq.filter((x) => x.g.actionableDeeplink).map((x) => `${x.ai}.${x.gi}`)).size;
+        app.innerHTML = `<div class="done"><div class="tick">✓</div><p class="t">Fix complete</p><p class="muted small">${seq.length} steps · ${opened} shortcut${opened === 1 ? "" : "s"} · ${verified.size} verified</p>
+          <div class="nav-row" style="margin-top:18px"><button class="back" data-go="restart">Restart</button><button class="next" data-go="back">Review</button></div></div>`;
+        return;
+      }
+      const x = seq[i], cat = x.a.category || "manual";
+      if (cat === "critical" && !confirmed.has(x.ai)) openSheet(x);
+      const key = `${x.ai}.${x.gi}`;
+      const link = x.g.actionableDeeplink, val = x.g.validationDeeplink;
+      app.innerHTML = `
+        <div class="app-bar"><span>Guided fix</span><span class="step-count">${i + 1} / ${seq.length}</span></div>
+        <p class="app-title">${esc(plan.title)}</p>
+        <div class="prog"><i style="width:${((i + 1) / seq.length) * 100}%"></i></div>
+        <div class="step-card">
+          <div class="sc-top"><span class="sc-action">${String(x.ai + 1).padStart(2, "0")} · ${esc(x.a.actionName)}</span><span class="cat ${esc(cat)}">${esc(cat)}</span></div>
+          <span class="step-count">step ${x.si + 1} of ${x.n}</span>
+          <p class="step-text">${esc(x.text)}</p>
+          ${verified.has(key) && val ? `<div class="verified">✓ Verified · ${esc(val.key)}${val.condition ? ` ${val.condition === "equal" ? "=" : esc(val.condition)} ${esc(val.value)}` : ""}</div>` : ""}
+          ${link ? `<button class="open-link" data-go="open"><span>${link.deeplink === "bixby://dummy_positive" ? "Shortcut · placeholder link" : "Shortcut · deeplink"}</span><b>${esc(link.message || link.description)} ↗</b></button>` : ""}
+        </div>
+        <div class="nav-row"><button class="back" data-go="prev" ${i === 0 ? "disabled" : ""}>Back</button><button class="next" data-go="next">${i === seq.length - 1 ? "Finish" : "Next step"}</button></div>`;
+    }
+    function openSettings(x) {
+      const dl = x.g.actionableDeeplink, val = x.g.validationDeeplink, pol = polarity(dl);
+      const name = screenName(dl);
+      settings.innerHTML = `
+        <button class="set-back" data-go="close">‹ Guided fix</button>
+        <p class="set-title">${esc(name)}</p>
+        <div class="set-group">
+          <div class="set-row"><span>${esc(val ? val.key : name)}<small>${esc(dl.description || "")}</small></span>
+            ${pol === "view" ? `<span class="muted">›</span>` : `<span class="toggle${pol === "off" ? " on" : ""}" id="tg"></span>`}</div>
+        </div>
+        <p class="set-uri">${esc(dl.deeplink)}${dl.originalType ? " · " + esc(dl.originalType) : ""}</p>
+        ${val ? `<button class="verify-btn" data-go="verify">Verify · ${esc(val.key)}</button>` : `<button class="verify-btn" data-go="close">Done</button>`}`;
+      settings.classList.add("show");
+      settings.setAttribute("aria-hidden", "false");
+      if (pol !== "view") setTimeout(() => { const t = $("#tg"); if (t) t.classList.toggle("on", pol === "on"); }, REDUCED ? 0 : 650);
+    }
+    function closeSettings() { settings.classList.remove("show"); settings.setAttribute("aria-hidden", "true"); }
+    function openSheet(x) {
+      sheet.innerHTML = `<div class="panel"><div class="warn">!</div><h5>Before you continue</h5>
+        <p>“${esc(x.a.actionName)}” is marked critical. It can erase data or involves device safety. Back up first and continue only if you're sure.</p>
+        <div class="row2"><button class="skip" data-go="skip">Skip action</button><button class="go" data-go="confirm">Continue</button></div></div>`;
+      sheet.classList.add("show");
+      sheet.setAttribute("aria-hidden", "false");
+    }
+    function closeSheet() { sheet.classList.remove("show"); sheet.setAttribute("aria-hidden", "true"); }
+
+    $("#phone").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-go]");
+      if (!b) return;
+      const x = seq[i];
+      switch (b.dataset.go) {
+        case "next": i = Math.min(seq.length, i + 1); render(); break;
+        case "prev": i = Math.max(0, i - 1); render(); break;
+        case "restart": i = 0; confirmed = new Set(); verified = new Set(); render(); break;
+        case "back": i = Math.max(0, seq.length - 1); render(); break;
+        case "open": openSettings(x); break;
+        case "close": closeSettings(); break;
+        case "verify": verified.add(`${x.ai}.${x.gi}`); closeSettings(); render(); break;
+        case "confirm": confirmed.add(x.ai); closeSheet(); break;
+        case "skip": {
+          closeSheet();
+          const nxt = seq.findIndex((y, k) => k > i && y.ai !== x.ai);
+          i = nxt < 0 ? seq.length : nxt;
+          render();
+          break;
+        }
+      }
+    });
+    const tick = () => { const d = new Date(); $("#clock").textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; };
+    tick(); setInterval(tick, 30000);
+    return { load, jumpToAction };
+  })();

@@ -55,3 +55,24 @@ def test_deeplinks_resolve_to_the_named_setting():
     assert {"View WiFi Settings", "Open Clear cache in device Settings"} <= msgs("row_1")
     assert "Enable Edge panels" in msgs("row_7")
     assert {"Enable Touch sensitivity", "Disable Touch sensitivity", "View Reset Options"} <= msgs("row_21")
+
+
+def test_dummy_links_name_the_screen_and_stay_short():
+    out = troubleshoot(KIT[0]["original_query"], KIT[0]["siis_response"])
+    dummies = [sg["actionableDeeplink"] for a in out["contexts"][0]["actions"] for sg in a["stepGroups"]
+               if sg["actionableDeeplink"] and sg["actionableDeeplink"]["deeplink"] == DUMMY]
+    assert dummies
+    for d in dummies:
+        assert 5 <= len(words(d["description"])) <= 7 and 5 <= len(words(d["message"])) <= 7
+
+
+def test_critical_for_destructive_or_safety_actions():
+    out = troubleshoot(UNSEEN[4]["query"], UNSEEN[4]["siis_response"])     # swollen battery
+    assert all(a["category"] == "critical" for a in out["contexts"][0]["actions"])
+
+
+def test_urls_are_stripped():
+    siis = {"title": "Reset Wi-Fi", "content": "Go to Settings, tap Connections, and then tap Wi-Fi. "
+            "See https://example.com/help or www.samsung.com for details. [link](http://x.y) ![img](a.png)"}
+    out = troubleshoot("wifi not working", siis)
+    assert out["contexts"] and url_leaks(out) == []

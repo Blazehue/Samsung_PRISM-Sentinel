@@ -205,3 +205,26 @@ def gemini_cold(n: int = 30):
     tin, tout = llm.usage["input_tokens"] - tin0, llm.usage["output_tokens"] - tout0
     return {"lat": lat, "n": len(lat), "calls": calls, "failures": llm.usage["failures"] - fail0,
             "tin": tin, "tout": tout, "cost": (tin * llm.PRICE_IN + tout * llm.PRICE_OUT) / 1e6}
+
+
+def env():
+    try:
+        ram = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 2**30
+    except (ValueError, OSError, AttributeError):
+        ram = float("nan")
+    return f"{os.cpu_count()} vCPU / {ram:.0f} GB RAM / {platform.system()} {platform.release()} / Python {platform.python_version()}"
+
+
+def main():
+    t0 = time.perf_counter()
+    comp = compliance()
+    completeness, correctness, ordering = step_accuracy(comp["outs"])
+    step_acc = completeness + correctness + ordering
+    lc = latency_and_cache()
+    ab = {name: catalogue_sweep(fn) for name, fn in
+          (("shipped", shipped), ("hybrid", hybrid_bm25_dense), ("rules", pure_rules))}
+    gc = gemini_cold()
+    kit_sg = [sg for (q, siis), o in comp["outs"][:len(KIT)] for g in o["contexts"] for a in g["actions"] for sg in a["stepGroups"]]
+    kit_groups, kit_linked = len(kit_sg), sum(bool(sg["actionableDeeplink"]) for sg in kit_sg)
+    f = lambda x: f"{x:.1%}"
+    ms = lambda x: f"{x:.2f}"

@@ -78,3 +78,30 @@ class BM25:
         scored = [(i, self.score(query, i)) for i in range(self.N)]
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[:k]
+
+
+DIM = 512
+
+
+def embed(text: str) -> list[float]:
+    """Hashed unigram+bigram vector, L2-normalised (deterministic, offline)."""
+    toks = tokens(text)
+    grams = toks + [f"{a}_{b}" for a, b in zip(toks, toks[1:])]
+    v = [0.0] * DIM
+    for g in grams:
+        h = int(hashlib.md5(g.encode()).hexdigest(), 16)
+        v[h % DIM] += 1.0 if (h >> 9) & 1 else -1.0
+    n = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / n for x in v]
+
+
+def cosine(a: list[float], b: list[float]) -> float:
+    return sum(x * y for x, y in zip(a, b))
+
+
+URL_PATTERN = re.compile(r"(https?://\S+|www\.\S+|\S+\.(?:com|html?|net|org|in|co)\b\S*|!\[[^\]]*\]\([^)]*\)|<a\s[^>]*>|</a>)", re.I)
+
+
+def strip_urls(text: str) -> str:
+    """Remove anything the G5 gate would count as a URL leak."""
+    return re.sub(r"\s{2,}", " ", URL_PATTERN.sub("", text or "")).strip()

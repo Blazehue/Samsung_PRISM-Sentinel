@@ -303,3 +303,9 @@ Only the deeplink mapper changes between variants: parsing and steps are identic
 * **Domain gaps:** goal naming uses a symptom lexicon (display, battery, camera/app crashes, performance, connectivity, SIM, liquid damage…). An unfamiliar topic falls back to the article title's key words.
 * **Step completeness** is capped by the verbatim rule: instructions phrased as prose ("the phone may need to be restarted") aren't turned into imperative steps.
 """
+    (ROOT / "metrics.md").write_text(lines)
+    print(lines)
+
+
+if __name__ == "__main__":
+    main()

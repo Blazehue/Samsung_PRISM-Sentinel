@@ -277,3 +277,190 @@
     const c = state.cases.find((x) => x.id === b.dataset.id);
     if (c) selectCase(c);
   });
+
+  /* ───────────────────────── run ───────────────────────── */
+  const runBtn = $("#runBtn"), repeatBtn = $("#repeatBtn"), paraBtn = $("#paraBtn");
+  const readInput = () => ({ query: qIn.value.trim(), siis_response: { title: tIn.value, content: cIn.value } });
+
+  $("#runForm").addEventListener("submit", (e) => { e.preventDefault(); runTroubleshoot(); });
+  repeatBtn.addEventListener("click", () => runTroubleshoot({ keepVars: true }));
+  paraBtn.addEventListener("click", () => {
+    const own = state.current && state.paraphrases[state.current.id];
+    const pool = own && own.length ? own : state.vars;
+    if (!pool.length) return;
+    qIn.value = pool[state.paraIdx++ % pool.length];
+    runTroubleshoot({ keepVars: true });
+  });
+
+  async function runTroubleshoot({ keepVars = false } = {}) {
+    const body = readInput();
+    // No article is allowed: the engine then looks the query up among pre-warmed scenarios (guide §5).
+    if (!body.query && !body.siis_response.content.trim() && !body.siis_response.title.trim()) { qIn.focus(); return; }
+    runBtn.disabled = true;
+    runBtn.firstChild.textContent = "Running… ";
+    try {
+      const [ts, insp, vars] = await Promise.all([
+        call("/v1/troubleshoot", body),
+        call("/v1/inspect", body).catch(() => null),
+        keepVars ? Promise.resolve(null) : call("/v1/variations", { query: body.query || body.siis_response.title }).catch(() => null),
+      ]);
+      state.last = { body, ...ts, inspect: insp && insp.data };
+      if (vars) state.vars = vars.data.query_variations || [];
+      renderStrip(ts, body);
+      renderPlan(ts.data);
+      renderPipe(insp && insp.data, ts.data);
+      renderVars();
+      renderJson(ts.data);
+      updateBand(ts, insp && insp.data);
+      phone.load(ts.data);
+      repeatBtn.disabled = paraBtn.disabled = false;
+    } catch (err) {
+      $("#planEmpty").hidden = false;
+      $("#plan").hidden = true;
+      $("#planEmpty").innerHTML = `<p class="h-empty">The API didn't answer.</p><p class="muted">${esc(err.message)}. Is the server running at ${esc(API_LABEL)}?</p>`;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.firstChild.textContent = "Run troubleshoot ";
+    }
+  }
+
+  function renderStrip(ts, body) {
+    const cache = ts.cache || "—";
+    const [g, n] = grounding(ts.data, body.siis_response);
+    const ch = checks(ts.data), ok = ch.filter(([, v]) => v).length;
+    const set = (id, v, cls = "") => { const el = $(id); el.textContent = v; el.className = cls; el.parentElement.classList.remove("flash"); void el.offsetWidth; el.parentElement.classList.add("flash"); };
+    set("#sCache", cache === "miss" ? "miss" : cache, cache === "miss" ? "miss" : cache === "—" ? "" : "hit");
+    set("#sServer", fmtMs(ts.server));
+    set("#sRtt", fmtMs(ts.rtt));
+    set("#sGround", n ? `${g}/${n}` : "—");
+    set("#sFormat", `${ok}/${ch.length}`);
+  }
+
+  function linkChip(dl, kind) {
+    if (!dl) return "";
+    if (kind === "val") {
+      const cond = dl.condition ? ` ${dl.condition === "equal" ? "=" : dl.condition} ${esc(dl.value)}` : "";
+      return `<span class="dl"><span aria-hidden="true">✓</span><b>${esc(dl.key)}${cond}</b><code>${esc(dl.deeplink)}</code></span>`;
+    }
+    const dummy = dl.deeplink === "bixby://dummy_positive";
+    return `<span class="dl${dummy ? " dummy" : ""}"><span aria-hidden="true">↗</span><b>${esc(dl.message || dl.description)}</b><code>${esc(dl.deeplink)}</code></span>`;
+  }
+
+  function renderPlan(r) {
+    const empty = $("#planEmpty"), plan = $("#plan");
+    if (!r.contexts || !r.contexts.length) {
+      empty.hidden = false; plan.hidden = true;
+      const why = r.fallback === "no_siis_context"
+        ? "No article was sent and the query didn't clearly match any pre-warmed scenario."
+        : "The article contains no instructions to follow, so the engine returned an empty plan instead of inventing steps.";
+      empty.innerHTML = `<p class="h-empty">No plan · <code>${esc(r.fallback || "no_match")}</code></p><p class="muted">${why}</p>`;
+      return;
+    }
+    empty.hidden = true; plan.hidden = false;
+    const g = r.contexts[0];
+    const kind = /Configuration\.?$/.test(g.goal) ? "Configuration" : "Troubleshooting";
+    const meta = r.meta ? `<span class="badge">${esc(r.meta.model)} · $${Number(r.meta.cost_usd).toFixed(2)}</span>` : "";
+    const ch = checks(r);
+    plan.innerHTML = `
+      <div class="goal">
+        <div class="goal-top"><span class="badge dark">${esc(g.title)}</span><span class="badge">${kind}</span><span class="badge">${g.actions.length} actions</span>${meta}</div>
+        <p class="goal-text">${esc(g.goal)}</p>
+        <div class="score"><span>score</span><div class="bar"><i style="width:${Math.round(g.score * 100)}%"></i></div><span>${g.score.toFixed(2)}</span></div>
+      </div>
+      <ol class="actions">${g.actions.map((a, ai) => `
+        <li class="action${ai === 0 ? " open" : ""}" style="--i:${ai}">
+          <button class="a-head" type="button" aria-expanded="${ai === 0}">
+            <span class="a-num">${String(ai + 1).padStart(2, "0")}</span>
+            <span><span class="a-name">${esc(a.actionName)}</span><span class="a-desc">${esc(a.description)}</span></span>
+            <span class="a-meta"><span class="cat ${esc(a.category || "manual")}">${esc(a.category || "manual")}</span><span class="chev" aria-hidden="true">▾</span></span>
+          </button>
+          <div class="a-body"><div><div class="groups">${a.stepGroups.map((sg) => `
+            <div class="group">
+              <ol class="steps">${sg.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+              ${sg.actionableDeeplink || sg.validationDeeplink ? `<div class="links">${linkChip(sg.actionableDeeplink, "act")}${linkChip(sg.validationDeeplink, "val")}</div>` : ""}
+            </div>`).join("")}
+            <button class="sim-btn" type="button" data-sim="${ai}">Simulate on device →</button>
+          </div></div></div>
+        </li>`).join("")}
+      </ol>
+      <div class="checks-row">${ch.map(([k, v]) => `<span class="check${v ? "" : " bad"}">${v ? "✓" : "✕"} ${esc(k)}</span>`).join("")}</div>`;
+  }
+
+  $("#plan").addEventListener("click", (e) => {
+    const sim = e.target.closest("[data-sim]");
+    if (sim) { phone.jumpToAction(+sim.dataset.sim); $("#phone").scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "center" }); return; }
+    const head = e.target.closest(".a-head");
+    if (!head) return;
+    const li = head.parentElement;
+    li.classList.toggle("open");
+    head.setAttribute("aria-expanded", String(li.classList.contains("open")));
+  });
+
+  function renderPipe(insp, r) {
+    const box = $("#pipe");
+    if (!insp) { box.innerHTML = `<p class="muted">Pipeline details are unavailable from this API.</p>`; return; }
+    const e = insp.enriched;
+    const links = insp.sections.flatMap((s) => s.groups.map((g) => g.link)).filter(Boolean);
+    box.innerHTML = `
+      <div><h4>01 · Enrichment</h4><div class="kv">
+        <span><i>device</i>${esc(e.device || "not named")}</span>
+        <span><i>symptoms</i>${esc(e.symptoms.join(", ") || "none detected")}</span>
+        <span><i>intent</i>${e.is_issue ? "fix an issue" : "how-to"}</span>
+      </div><div class="kv" style="margin-top:6px">${e.keywords.map((k) => `<span>${esc(k)}</span>`).join("")}</div></div>
+      <div><h4>02 · Sections parsed from “${esc(insp.siis_title)}”</h4><div class="pipe">${insp.sections.map((s) => `
+        <div class="sec-box"><p class="sec-title">${esc(s.title)}</p>
+          <p class="sec-meta"><span><b>${s.groups.reduce((n, g) => n + g.steps.length, 0)}</b> steps</span><span><b>${s.groups.length}</b> group${s.groups.length > 1 ? "s" : ""}</span>
+          ${s.groups.map((g) => g.targets.length ? `<span>labels: ${g.targets.slice(0, 4).map(esc).join(" · ")}</span>` : "").join("")}
+          ${s.groups.map((g) => g.link ? `<span>→ <b>${esc(g.link.id === "bixby://dummy_positive" ? "dummy · " + (g.link.screen || "") : g.link.message)}</b>${g.link.matched ? ` <span class="muted">(matched: ${g.link.matched.map(esc).join(", ")})</span>` : ""}</span>` : "").join("")}</p>
+        </div>`).join("") || `<p class="muted">No actionable sections.</p>`}</div></div>
+      <div><h4>03 · Deeplinks</h4><div class="kv"><span><i>catalogue</i>${links.filter((l) => l.id !== "bixby://dummy_positive").length}</span><span><i>dummy</i>${links.filter((l) => l.id === "bixby://dummy_positive").length}</span><span><i>unlinked groups</i>${insp.sections.reduce((n, s) => n + s.groups.filter((g) => !g.link).length, 0)}</span></div></div>`;
+  }
+
+  function renderVars() {
+    const box = $("#vars");
+    if (!state.vars.length) { box.innerHTML = `<li><span class="muted">No variations yet.</span></li>`; return; }
+    box.innerHTML = state.vars.map((v, i) => `<li><span>${esc(v)}</span><button type="button" data-v="${i}">Run</button></li>`).join("");
+  }
+  $("#vars").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-v]");
+    if (!b) return;
+    qIn.value = state.vars[+b.dataset.v];
+    selectTab("plan");
+    runTroubleshoot({ keepVars: true });
+  });
+
+  function renderJson(r) {
+    const s = esc(JSON.stringify(r, null, 2));
+    $("#json").innerHTML = s.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?)/g, (m, str, colon, lit, num) =>
+      str ? `<span class="${colon ? "k" : "s"}">${str}</span>${colon || ""}` : lit ? `<span class="b">${lit}</span>` : `<span class="n">${num}</span>`);
+  }
+  $("#copyJson").addEventListener("click", async (e) => {
+    if (!state.last) return;
+    try { await navigator.clipboard.writeText(JSON.stringify(state.last.data, null, 2)); e.target.textContent = "Copied"; }
+    catch { e.target.textContent = "Copy failed"; }
+    setTimeout(() => (e.target.textContent = "Copy"), 1400);
+  });
+
+  function selectTab(name) {
+    $$(".tabs button").forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
+    $$(".tab-body").forEach((t) => (t.hidden = t.id !== "tab-" + name));
+  }
+  $(".tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) selectTab(b.dataset.tab); });
+
+  function updateBand(ts, insp) {
+    const r = ts.data, g = r.contexts && r.contexts[0];
+    const put = (id, html) => ($(`#${id} .rc-v`).innerHTML = html);
+    if (insp) {
+      const e = insp.enriched;
+      put("pc-enrich", `${esc(e.device || "Device not named")}<small>${esc(e.symptoms.slice(0, 2).join(" · ") || "no symptom detected")} · ${e.is_issue ? "fix" : "how-to"}</small>`);
+      const steps = insp.sections.reduce((n, s) => n + s.groups.reduce((m, gg) => m + gg.steps.length, 0), 0);
+      put("pc-parse", `${insp.sections.length} sections · ${steps} steps<small>${grounding(r, state.last.body.siis_response).join("/")} grounded in the article</small>`);
+    }
+    const groups = g ? g.actions.flatMap((a) => a.stepGroups) : [];
+    const acts = groups.map((sg) => sg.actionableDeeplink).filter(Boolean);
+    const dummy = acts.filter((l) => l.deeplink === "bixby://dummy_positive").length;
+    put("pc-link", g ? `${acts.length - dummy} catalogue · ${dummy} dummy<small>${esc((acts[0] && acts[0].message) || "no Settings screens in this article")}</small>` : "—");
+    const ch = checks(r);
+    put("pc-compose", g ? `${ch.filter(([, v]) => v).length}/${ch.length} rules pass<small>${esc(g.goal)}</small>` : "No contexts");
+    put("pc-cache", `${esc(ts.cache || "—")} · ${fmtMs(ts.server)}<small>round trip ${fmtMs(ts.rtt)} from this browser</small>`);
+  }

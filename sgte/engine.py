@@ -129,3 +129,17 @@ def title_case(text: str) -> str:
         else:
             out.append("-".join(p[:1].upper() + p[1:] for p in w.split("-")))
     return " ".join(out)
+
+
+def sentence_case(text: str) -> str:
+    """Guide §4.1: title in sentence case — 'Email Connection' → 'Email connection'."""
+    out = []
+    for i, w in enumerate(_words(text)):
+        low = w.lower()
+        if low in KEEP_CASE:
+            out.append(KEEP_CASE[low])
+        elif _keep(w):
+            out.append(w)
+        else:
+            out.append(w[:1].upper() + w[1:].lower() if i == 0 else low)
+    return " ".join(out)

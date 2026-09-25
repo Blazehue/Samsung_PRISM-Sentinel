@@ -67,3 +67,17 @@ def _sentences(line: str) -> list[str]:
     line = re.sub(r"(?<=[a-z)])\.(?=[A-Z][a-z])", ". ", line.strip())
     parts = re.split(r"(?<=[.!?])\s+(?=[A-Z\"'])", line)
     return [p.strip() for p in parts if p.strip()]
+
+
+def _first_word(s: str) -> str:
+    s = s.lower().lstrip("\"'([ ")
+    changed = True
+    while changed:
+        changed = False
+        for lead in LEADERS:
+            if s.startswith(lead + " "):
+                s = s[len(lead) + 1:].lstrip(", ")
+                changed = True
+                break
+    m = re.match(r"[a-z-]+", s)
+    return m.group(0) if m else ""

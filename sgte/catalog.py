@@ -179,3 +179,14 @@ class Catalog:
                 seen.add(t.lower())
                 out.append(t)
         return out
+
+    @staticmethod
+    def mentions_settings(steps: list[str]) -> bool:
+        blob = " ".join(steps).lower()
+        return "settings" in blob or bool(ON.search(blob) or OFF.search(blob))
+
+    # ------------------------------------------------------------------ matching
+    @staticmethod
+    def _norm(text: str) -> str:
+        t = text.lower().replace("wi-fi", "wifi").replace("e-mail", "email")
+        return " " + re.sub(r"[^a-z0-9]+", " ", t).strip() + " "

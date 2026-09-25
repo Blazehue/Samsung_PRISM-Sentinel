@@ -106,3 +106,28 @@ def deterministic(query: str, n: int = 10) -> list[str]:
         f"{device} {nouns[0]} fix",
     ]
     return pick_diverse(query, cands, n)
+
+
+def pick_diverse(query: str, cands: list[str], n: int = 10, max_sim: float = 0.8) -> list[str]:
+    out, seen = [], [set(tokens(query))]
+    for c in cands:
+        c = re.sub(r"\s+", " ", c).strip()
+        t = set(tokens(c))
+        if not c or c.lower() == query.lower().strip() or any(jaccard(t, s) > max_sim for s in seen):
+            continue
+        out.append(c)
+        seen.append(t)
+        if len(out) == n:
+            break
+    return out
+
+
+def variations(query: str, n: int = 10) -> list[str]:
+    from . import llm
+    got = llm.variations(query, n) if llm.available("variations") else None
+    base = deterministic(query, n)
+    if got:
+        merged = pick_diverse(query, got + base, n)
+        if len(merged) >= 8:
+            return merged
+    return base

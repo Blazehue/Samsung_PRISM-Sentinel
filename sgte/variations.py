@@ -61,3 +61,48 @@ def _a(noun: str) -> str:
 def _situation(q: str) -> str | None:
     m = re.search(r"\b(when|whenever|while|after|if)\b ([^,.;]{6,70})", q, re.I)
     return f"{m.group(1).lower()} {m.group(2).strip()}" if m else None
+
+
+def deterministic(query: str, n: int = 10) -> list[str]:
+    e = enrich(query)
+    device = e.device or "Galaxy phone"
+    sym = e.symptoms[0] if e.symptoms else None
+    kw = " ".join(e.keywords[:4]) or "device"
+    if sym in PHRASES:
+        nouns, clauses = PHRASES[sym]
+    else:
+        # No known symptom: reuse the user's own words for the problem.
+        rest = re.sub(r"^(my|the)\s+", "", re.split(r"[,.;]| and ", e.raw, maxsplit=1)[0].strip(), flags=re.I)
+        if e.device:
+            rest = re.sub(re.escape(e.device), "", rest, flags=re.I).strip() or rest
+        rest = re.sub(r"^(samsung|galaxy|phone|tablet)\s+", "", rest, flags=re.I).strip() or "has a problem"
+        words = [w for w in re.findall(r"[A-Za-z][\w'-]*", rest)
+                 if w.lower() not in {"makes", "make", "has", "is", "a", "an", "the", "from", "my", "it", "keeps", "of", "on", "in", "when"}]
+        topic = " ".join(words[:4]) or "device"
+        nouns = [f"{topic} problem", f"{topic} issue"]
+        clauses = [f"the phone {rest}" if not rest.startswith(("the ", "my ")) else rest, f"it {rest}"]
+    sit = _situation(e.raw)
+    s = f" {sit}" if sit else ""
+    first = re.split(r"[,.;]| and ", e.raw, maxsplit=1)[0].strip()
+    first = re.sub(r"^(my|the)\s+", "", first, flags=re.I)
+    first = first[:1].upper() + first[1:] if first else ""
+
+    cands = [
+        # formal · casual · keyword-only · frustrated · typo-inclusive first, so they survive the cut to 10
+        f"I am experiencing an issue where {clauses[0]} on my {device}; how can this be resolved?",
+        f"ugh {clauses[1]} on my phone again{s}, any fix?",
+        f"{nouns[1]} {device.lower()} troubleshooting",
+        f"This is so annoying, {clauses[0]} on my {device} again and nothing helps!",
+        _typos(f"my {device.lower()} {nouns[0]}{s}, how do i fix it"),
+        f"How do I fix {_a(nouns[0])} on my {device}?",
+        f"{device} {nouns[1]}{s} — how to fix",
+        f"My {device}: {clauses[0]}, why is this happening?",
+        f"Steps to resolve {_a(nouns[0])} on a Samsung {device.replace('Samsung ', '')}",
+        f"{first} — what should I try first?" if first else f"{clauses[0].capitalize()} — what should I try first?",
+        f"Is there a setting that fixes the {nouns[1]} on {device}?",
+        f"My {device} has {_a(nouns[0])}{s}; is it hardware or software?",
+        f"Samsung support: {clauses[0]}, need troubleshooting steps",
+        f"{clauses[1].capitalize()} on {device}, what can I do?",
+        f"{device} {nouns[0]} fix",
+    ]
+    return pick_diverse(query, cands, n)

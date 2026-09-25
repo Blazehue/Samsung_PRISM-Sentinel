@@ -199,3 +199,30 @@ def canonical(query: str, deadline: float | None = None) -> str | None:
     prompt = ("Rewrite this Samsung Galaxy device complaint as a short canonical technical support query (device "
               "feature + symptom, at most 12 words). Return JSON {\"canonical\": \"...\"}.\n\nComplaint: " + json.dumps(query))
     return ask("understand", prompt, {"q": query}, ok, deadline=deadline)
+
+
+def pick_deeplinks(groups: list[dict], deadline: float | None = None) -> list[str | None] | None:
+    """Closed-set choice per step group: one candidate id, or none. `groups` is
+    [{"steps": [...], "candidates": [{"id", "message", "description"}]}]."""
+    ids = [{c["id"] for c in g["candidates"]} for g in groups]
+
+    def ok(d):
+        ch = d.get("choices")
+        if not isinstance(ch, list) or len(ch) != len(groups):
+            return None
+        out = []
+        for c, allowed in zip(ch, ids):
+            c = str(c).strip()
+            if c.lower() == "none":
+                out.append(None)
+            elif c in allowed:
+                out.append(c)
+            else:
+                return None                          # an id outside the shortlist: reject the whole answer
+        return out
+    prompt = ("You map Samsung Galaxy troubleshooting steps to the Settings screen they open. For each group, choose the "
+              "ONE candidate whose description is exactly the screen or setting the steps end on. If no candidate is that "
+              "exact screen (only a parent menu, a neighbouring setting, or the wrong on/off direction), answer \"none\". "
+              "Never invent ids. Return JSON {\"choices\": [id or \"none\", ...]} in group order.\n\n" +
+              json.dumps(groups, ensure_ascii=False))
+    return ask("rerank", prompt, groups, ok, deadline=deadline)

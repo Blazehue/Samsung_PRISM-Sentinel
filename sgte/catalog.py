@@ -263,3 +263,28 @@ class Catalog:
         # the catalogue is that label, a dummy link beats a guess from the name.
         own = set(tokens(primary)) if primary else set()
         return best or self._rare_name_match([t for t in name_toks if t not in own])
+
+    def _rare_name_match(self, name_toks: list[str]) -> Match | None:
+        """A very rare word in the action name that names an on-screen setting
+        (e.g. "Fingerprint" → "View Fingerprint unlock"). ≤ ~4 catalogue entries."""
+        rare = [t for t in name_toks if self.bm25.idf.get(t, 0) >= 4.5]
+        # Prefer a "View …" page, then enabling; never default to switching it off.
+        rank = lambda e: (e.message.startswith("View"), e.message.startswith("Enable"))
+        best = None
+        for t in rare:
+            for e in self.entries:
+                if t in set(tokens(e.message)) and (best is None or rank(e) > rank(best.entry)):
+                    best = Match(e, self.bm25.idf[t], [t])
+        return best
+
+    def primary_screen(self, steps: list[str]) -> str | None:
+        """Most specific Settings screen the steps navigate to (for dummy links)."""
+        for lab in self.targets(steps):
+            if any(t not in GENERIC for t in tokens(lab)):
+                return re.sub(r"\s+", " ", lab).strip()
+        return None
+
+
+@lru_cache(maxsize=1)
+def get_catalog() -> Catalog:
+    return Catalog()

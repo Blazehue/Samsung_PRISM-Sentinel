@@ -39,3 +39,25 @@ PHRASES = {
     "Network Connection": (["Wi-Fi connection problem", "network dropout"], ["Wi-Fi keeps dropping", "there is no internet connection"]),
     "Display Distortion": (["distorted display", "lines on the screen"], ["the display looks distorted", "lines appear across the screen"]),
 }
+
+
+def _typos(text: str) -> str:
+    """Deterministic, human-looking typos in a few longer words (typo-inclusive register)."""
+    words, out, n = text.split(), [], 0
+    for w in words:
+        core = re.sub(r"[^A-Za-z]", "", w)
+        if n < 3 and len(core) >= 5 and core.lower() not in {"samsung", "galaxy"}:
+            k = len(w) // 2
+            w = w[:k] + w[k + 1:] if n % 2 == 0 else w[:k - 1] + w[k] + w[k - 1] + w[k + 1:]   # drop / swap
+            n += 1
+        out.append(w)
+    return " ".join(out)
+
+
+def _a(noun: str) -> str:
+    return ("an " if noun[:1].lower() in "aeiou" else "a ") + noun
+
+
+def _situation(q: str) -> str | None:
+    m = re.search(r"\b(when|whenever|while|after|if)\b ([^,.;]{6,70})", q, re.I)
+    return f"{m.group(1).lower()} {m.group(2).strip()}" if m else None

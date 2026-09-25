@@ -270,3 +270,21 @@ def _validation(v: dict | None) -> dict | None:
     if v.get("value") is not None:
         out["value"] = str(v["value"])
     return out
+
+
+def step_group(name: str, steps: list[str], link: bool = True) -> dict:
+    cat = get_catalog()
+    sg: dict = {"steps": steps, "validationDeeplink": None, "actionableDeeplink": None}
+    if not link:
+        return sg
+    m = cat.match(name, steps)
+    if m:
+        e = m.entry
+        sg["actionableDeeplink"] = {"deeplink": e.deeplink, "description": e.description,
+                                    "message": e.message, "originalType": e.original_type}
+        sg["validationDeeplink"] = _validation(e.validation)
+    elif cat.mentions_settings(steps) and re.search(r"\bsettings\b", " ".join(steps), re.I):
+        screen = cat.primary_screen(steps)
+        if screen:
+            sg["actionableDeeplink"] = _dummy(screen)
+    return sg

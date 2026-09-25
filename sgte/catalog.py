@@ -190,3 +190,76 @@ class Catalog:
     def _norm(text: str) -> str:
         t = text.lower().replace("wi-fi", "wifi").replace("e-mail", "email")
         return " " + re.sub(r"[^a-z0-9]+", " ", t).strip() + " "
+
+    def match(self, action_name: str, steps: list[str]) -> Match | None:
+        """Link a step group to a catalogue entry, or None (precision over recall).
+
+        Decided by the *most specific* label the steps end on ("…tap Storage,
+        tap Clear cache" is about Clear cache). Rules by label length:
+          1 word  → the phrase must appear in the entry's on-screen message
+          2 words → both words must appear in the entry
+          3+      → at least two thirds must appear
+        Entries whose message contains the whole label phrase are preferred.
+        With no usable label, rare action-name words (≥ 2, all present) decide.
+        """
+        if not self.mentions_settings(steps):
+            return None
+        # Extend first: "Touch" alone is generic, "Touch and hold to edit" is a setting.
+        labels = [lab for lab in (self._extend(t, steps) for t in self.targets(steps, self.by_label, self._extend))
+                  if any(t not in GENERIC for t in tokens(lab))
+                  # "Screen mode" is a real setting even though both words are generic;
+                  # "More options" / "Settings" are UI chrome that exists on every OS.
+                  or (self._norm(lab) in self.by_label and any(t not in CHROME for t in tokens(lab)))]
+        primary = labels[0] if labels else None
+        name_toks = [t for t in tokens(action_name) if t not in GENERIC and self.bm25.idf.get(t, 0) >= 2.5]
+        if primary is None and len(name_toks) < 2:
+            return self._rare_name_match(name_toks)
+
+        polarity = self.polarity(steps)
+        # An entry whose on-screen label *is* the step's label beats any partial
+        # match: "Bluetooth" → "View Bluetooth", not "View Bluetooth scanning".
+        if primary and self._norm(primary) in self.by_label:
+            cands = [self.entries[i] for i in self.by_label[self._norm(primary)]]
+            # A step with no on/off only opens the page: prefer the entry that opens
+            # it over Enable/Disable, which would flip the setting as a side effect.
+            toggles = lambda e: e.message.startswith(("Enable", "Disable"))
+            # Messages are often shared ("View Notification Settings" names 21 pages);
+            # the description names the actual page, so an exact description label wins.
+            page = lambda e: self._norm(primary) == self.desc_label(e)
+            rank = lambda e: (self.fits(e, polarity), polarity != "View" or not toggles(e), page(e),
+                              polarity == "Disable" or not e.message.startswith("Disable"))
+            e = max(cands, key=rank)
+            return Match(e, 1.0, [t for t in tokens(primary) if t in e.toks])
+
+        basis = [t for t in tokens(primary) if t not in GENERIC] if primary else name_toks
+        phrase = self._norm(primary) if primary else None
+        query = basis * 4 + name_toks * 2 + tokens(" ".join(steps))
+        best, best_key = None, None
+        for i, score in self.bm25.top(query, k=20):
+            if score <= 0:
+                break
+            e = self.entries[i]
+            in_msg = bool(phrase) and phrase in self._norm(e.message)
+            cov = sum(t in e.toks for t in basis) / len(basis)
+            if primary and len(basis) == 1:
+                ok = in_msg
+            elif primary and len(basis) == 2:
+                ok = cov == 1.0
+            else:
+                ok = cov >= 0.67 if primary else cov == 1.0
+            # Reject a *different* setting that merely lives on the same page:
+            # "Navigation bar" ≠ "Show input method button on navigation bar".
+            extra = [t for t in tokens(e.message) if t not in GENERIC and t not in basis]
+            if ok and primary and len(extra) >= 2:
+                ok = False
+            if not ok:
+                continue
+            # Steps that use/customise a feature need it on: prefer Enable over Disable.
+            not_off = polarity == "Disable" or not e.message.startswith("Disable")
+            key = (in_msg, cov, self.fits(e, polarity), not_off, score)
+            if best_key is None or key > best_key:
+                best, best_key = Match(e, score, [t for t in basis if t in e.toks]), key
+        # If the steps' own label *is* the rare word ("Font size") and nothing in
+        # the catalogue is that label, a dummy link beats a guess from the name.
+        own = set(tokens(primary)) if primary else set()
+        return best or self._rare_name_match([t for t in name_toks if t not in own])

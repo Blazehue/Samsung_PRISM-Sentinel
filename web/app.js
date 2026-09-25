@@ -218,3 +218,62 @@
     const steps = ((r && r.contexts) || []).flatMap((g) => g.actions.flatMap((a) => a.stepGroups.flatMap((sg) => sg.steps)));
     return [steps.filter((s) => src.includes(canon(s))).length, steps.length];
   }
+
+  /* ───────────────────────── cases ───────────────────────── */
+  const state = { cases: [], paraphrases: {}, source: "kit", current: null, last: null, paraIdx: 0, vars: [] };
+  const qIn = $("#qIn"), tIn = $("#tIn"), cIn = $("#cIn");
+
+  async function loadCases() {
+    try {
+      const { data } = await call("/v1/cases");
+      state.cases = data.cases || [];
+      state.paraphrases = data.paraphrases || {};
+      $("#nKit").textContent = state.cases.filter((c) => c.source === "kit").length;
+      $("#nUnseen").textContent = state.cases.filter((c) => c.source === "unseen").length;
+      renderChips();
+      const first = state.cases.find((c) => c.source === "kit");
+      if (first) selectCase(first);          // open on a real run, not an empty panel
+    } catch (err) {
+      $("#caseChips").innerHTML = `<span class="muted small">Couldn't reach ${esc(API_LABEL)}. Start the API with <code>uvicorn app:app</code>, or add <code>?api=https://host</code> to this page's URL.</span>`;
+    }
+  }
+
+  function renderChips() {
+    const box = $("#caseChips");
+    if (state.source === "custom") {
+      box.innerHTML = `<span class="muted small">Write any complaint and paste any SIIS-style article. Markdown headers, lists and plain prose all work.</span>`;
+      return;
+    }
+    const list = state.cases.filter((c) => c.source === state.source);
+    box.innerHTML = list.map((c) => `<button class="chip${state.current && state.current.id === c.id ? " on" : ""}" data-id="${esc(c.id)}" title="${esc(c.query)}"><b>${esc(c.id.replace("unseen_", "u"))}</b><span>${esc(c.query.replace(/^\s*\d+\.\s*/, ""))}</span></button>`).join("");
+  }
+
+  function selectCase(c, run = true) {
+    state.current = c;
+    state.paraIdx = 0;
+    qIn.value = c.query;
+    tIn.value = c.siis_response.title || "";
+    cIn.value = c.siis_response.content || "";
+    $("#caseLabel").textContent = `${c.id} · ${c.source}`;
+    renderChips();
+    if (run) runTroubleshoot();
+  }
+
+  $(".seg").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-src]");
+    if (!b) return;
+    $$(".seg button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", String(x === b)); });
+    state.source = b.dataset.src;
+    if (state.source === "custom") {
+      state.current = null;
+      $("#caseLabel").textContent = "custom";
+      qIn.focus();
+    }
+    renderChips();
+  });
+  $("#caseChips").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip");
+    if (!b) return;
+    const c = state.cases.find((x) => x.id === b.dataset.id);
+    if (c) selectCase(c);
+  });

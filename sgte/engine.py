@@ -324,3 +324,20 @@ def goal_header(query: str, siis: dict, deadline: float | None = None, live: boo
     return {"name": gname, "issue": issue, "siis_title": title, "title": sentence_case(gname),
             "goal": f"Follow these steps to perform this {gname} {kind}",
             "score": _score(set(enriched.keywords), set(tokens(title + " " + content)), sym_agree)}
+
+
+def retarget(response: dict, query: str, siis: dict) -> dict:
+    """Re-aim a cached response (built for another phrasing of the same SIIS)
+    at this query. Actions/steps/deeplinks depend only on the SIIS text."""
+    if not response.get("contexts"):
+        return response
+    h = goal_header(query, siis, live=False)          # a cache hit never waits on Gemini
+    g = response["contexts"][0]
+    g.update(goal=h["goal"], title=h["title"], score=h["score"])
+    for a in g["actions"]:
+        if a["actionName"] == action_name(Section(title=h["siis_title"])):
+            a["description"] = _whole_doc_desc(h["name"], h["issue"])
+    return response
+
+
+NO_MATCH = {"contexts": [], "fallback": "no_match"}

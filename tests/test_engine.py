@@ -265,3 +265,31 @@ def test_guide_restart_update_safe_mode_and_reset_are_critical():
             for a in g["actions"]:
                 if _re.search(r"\b(restart|safe mode|factory data reset)\b", a["actionName"], _re.I):
                     assert a["category"] == "critical", a["actionName"]
+
+
+def test_guide_action_names_title_case_and_titles_sentence_case():
+    small = {"a", "an", "the", "and", "or", "but", "of", "on", "in", "to", "for", "with", "by", "at", "from", "as"}
+    for q, s, out in ALL_PLANS:
+        for g in out["contexts"]:
+            t = g["title"].split()
+            assert t[0][0].isupper() and all(w.islower() or w.isupper() or not w[1:].islower() or w in ("Samsung", "Galaxy", "Bluetooth", "SIM")
+                                             for w in t[1:]), g["title"]
+            assert not g["goal"].endswith("."), g["goal"]                      # guide §4.1 exact syntax
+            for a in g["actions"]:
+                ws = a["actionName"].split()
+                for i, w in enumerate(ws):
+                    if 0 < i < len(ws) - 1 and w.lower() in small:
+                        continue
+                    assert w[0].isupper() or not w[0].isalpha(), a["actionName"]
+
+
+def test_guide_one_interaction_per_step():
+    # No step chains two UI interactions ("Go to Settings, tap Display"): count
+    # interaction verbs that start a clause.
+    starts = _re.compile(r"(?:^|[,;]\s+(?:and\s+)?(?:then\s+)?)(?:tap|select|touch|press|navigate|go to|swipe)\b", _re.I)
+    for q, s, out in ALL_PLANS:
+        for g in out["contexts"]:
+            for a in g["actions"]:
+                for sg in a["stepGroups"]:
+                    for st in sg["steps"]:
+                        assert len(starts.findall(st)) <= 1, st

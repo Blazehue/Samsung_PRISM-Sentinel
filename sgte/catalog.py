@@ -129,3 +129,20 @@ class Catalog:
                     if self._norm(cand) in self.by_label:
                         return cand
         return label
+
+    @staticmethod
+    def polarity(steps: list[str]) -> str:
+        """Enable / Disable (last on/off mentioned wins), Adjust (the step sets a
+        value), or View (the step only opens the page)."""
+        blob = " ".join(steps)
+        hits = [(m.start(), "Disable") for m in OFF.finditer(blob)] + [(m.start(), "Enable") for m in ON.finditer(blob)]
+        if hits:
+            return max(hits)[1]
+        return "Adjust" if ADJUST.search(blob) else "View"
+
+    @staticmethod
+    def fits(e: "Entry", polarity: str) -> bool:
+        """Does the entry do what the step does? Adjust covers Increase / Set."""
+        if polarity == "Adjust":
+            return e.message.startswith(("Adjust", "Increase", "Set"))
+        return e.message.startswith(polarity)

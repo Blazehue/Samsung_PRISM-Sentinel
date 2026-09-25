@@ -424,3 +424,26 @@ def _refine_descriptions(items: list[dict], deadline: float) -> None:
     if got:
         for a, d in zip(todo, got):
             a["description"] = _brand_case(d)
+
+
+BRANDS = [(r"\bpc\b", "PC"), (r"\btv\b", "TV"), (r"\bsim\b", "SIM"), (r"\bwi-?fi\b", "Wi-Fi"),
+          (r"\bbluetooth\b", "Bluetooth"), (r"\bsmart switch\b", "Smart Switch"), (r"\bsmartthings\b", "SmartThings"),
+          (r"\bsmart view\b", "Smart View"), (r"\bsamsung\b", "Samsung"), (r"\bgalaxy\b", "Galaxy")]
+
+
+def _brand_case(text: str) -> str:
+    for pat, rep in BRANDS:
+        text = re.sub(pat, rep, text, flags=re.I)
+    return text
+
+
+def troubleshoot(query: str, siis: dict) -> dict:
+    started = time.monotonic()
+    title, sections = parse_siis(siis)
+    if not sections:
+        # Guide §4.2: no viable solution in the reference text → empty plan with
+        # fallback metadata, never invented or explanatory "steps".
+        return dict(NO_MATCH)
+
+    h = goal_header(query, siis, deadline=started + LLM_BUDGET_S)   # shares the request's Gemini budget
+    actions = []

@@ -377,3 +377,22 @@ def gemini(monkeypatch):
     monkeypatch.setattr(_llm, "_call", fake_call)
     monkeypatch.setattr(_llm, "_memo", {})
     return script, calls
+
+
+def test_gemini_valid_description_is_used_and_memoised(gemini):
+    script, calls = gemini
+    script["*"] = json.dumps({"descriptions": ["It will check your Wi-Fi connection"]})
+    got = _llm.describe([{"action": "Verify Wi-Fi", "steps": ["Tap Wi-Fi."]}])
+    assert got == ["It will check your Wi-Fi connection"]
+    n = len(calls)
+    assert _llm.describe([{"action": "Verify Wi-Fi", "steps": ["Tap Wi-Fi."]}]) == got and len(calls) == n   # memo, no call
+
+
+def test_gemini_invalid_output_falls_back(gemini):
+    script, _ = gemini
+    script["*"] = json.dumps({"descriptions": ["This fixes everything forever and ever for sure"]})    # no "It will", 9 words
+    assert _llm.describe([{"action": "X", "steps": ["Tap X."]}]) is None
+    script["*"] = json.dumps({"descriptions": ["It will visit www.example.com now"]})                   # URL
+    assert _llm.describe([{"action": "Y", "steps": ["Tap Y."]}]) is None
+    script["*"] = "not json"
+    assert _llm.topic("Some title", "text") is None

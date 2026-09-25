@@ -247,3 +247,26 @@ def split_interactions(step: str) -> list[str]:
             out.append(carry)
     out = [p for p in out if p.strip()]
     return [_finish(p) for p in out] if len(out) > 1 else [step]
+
+
+# ---------------------------------------------------------------- deeplinks
+def _dummy(screen: str) -> dict:
+    sw = _trim(_words(screen), 3)
+    return {
+        "deeplink": DUMMY,
+        "description": " ".join(["Opens", "the", *sw, "settings", "screen"]),
+        "message": " ".join(["Open", *sw, "in", "device", "Settings"]),
+        "originalType": "placeholder",
+    }
+
+
+def _validation(v: dict | None) -> dict | None:
+    if not v:
+        return None
+    out = {"deeplink": v["deeplink"], "key": str(v["key"])}
+    for k in ("resultType", "condition"):
+        if v.get(k) is not None:
+            out[k] = v[k]
+    if v.get("value") is not None:
+        out["value"] = str(v["value"])
+    return out

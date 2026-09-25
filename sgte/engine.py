@@ -101,3 +101,31 @@ def goal_name(siis_title: str, query: str, head: str = "", deadline: float | Non
     if len(ws) == 1:
         ws.append("Issue")
     return " ".join(w[0].upper() + w[1:] for w in ws)
+
+
+TC_SMALL = {"a", "an", "the", "and", "or", "but", "nor", "of", "on", "in", "to", "for", "with", "by", "at",
+            "from", "as", "vs", "via", "per", "into"}
+KEEP_CASE = {"wi-fi": "Wi-Fi", "smartthings": "SmartThings", "smart": "Smart", "samsung": "Samsung",
+             "galaxy": "Galaxy", "bluetooth": "Bluetooth", "sim": "SIM", "pc": "PC", "tv": "TV", "usb": "USB"}
+
+
+def _keep(w: str) -> bool:
+    """Acronyms and brand spellings keep their casing (PC, SIM, Wi-Fi, SmartThings)."""
+    core = w.strip("'\".,:;!?()")
+    return (core.isupper() and len(core) <= 4) or bool(re.search(r"[a-z][A-Z]", core))
+
+
+def title_case(text: str) -> str:
+    """Guide §4.1: actionName in Title Case — 'Use pop-up view' → 'Use Pop-Up View'."""
+    out = []
+    for i, w in enumerate(_words(text)):
+        low = w.lower()
+        if low in KEEP_CASE:
+            out.append(KEEP_CASE[low])
+        elif _keep(w):
+            out.append(w)
+        elif 0 < i < len(_words(text)) - 1 and low in TC_SMALL:      # first and last word always capitalised
+            out.append(low)
+        else:
+            out.append("-".join(p[:1].upper() + p[1:] for p in w.split("-")))
+    return " ".join(out)

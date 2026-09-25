@@ -144,3 +144,30 @@ def test_input_txt_phrasing_gets_the_same_answer(client):
     for q, r in zip(lines, KIT):
         got = client.post("/v1/troubleshoot", json={"query": q, "siis_response": r["siis_response"]}).json()
         assert got["contexts"] and strip_meta(got) == troubleshoot(r["original_query"], r["siis_response"])
+
+
+def test_results_jsonl_shape(tmp_path):
+    import subprocess, sys
+    out = tmp_path / "results.jsonl"
+    root = Path(__file__).resolve().parent.parent
+    subprocess.run([sys.executable, str(root / "scripts" / "build_results.py"), "--out", str(out)], check=True)
+    lines = [json.loads(l) for l in out.read_text().splitlines()]
+    assert len(lines) == len(KIT)
+    for l in lines:
+        assert set(l) == {"query", "query_variations", "response", "meta"} and 8 <= len(l["query_variations"]) <= 10
+        assert set(l["meta"]) == {"latency_ms", "cache_hit", "model", "cost_usd"}
+
+
+def test_simulator_endpoints(client):
+    cases = client.get("/v1/cases").json()
+    assert sum(c["source"] == "kit" for c in cases["cases"]) == len(KIT)
+    assert sum(c["source"] == "unseen" for c in cases["cases"]) == len(UNSEEN)
+    assert cases["paraphrases"]
+    insp = client.post("/v1/inspect", json={"query": KIT[0]["original_query"], "siis_response": KIT[0]["siis_response"]}).json()
+    assert insp["enriched"]["symptoms"] and insp["sections"]
+    # every link in the real plan is one inspect reported (manual actions may drop theirs)
+    resp = troubleshoot(KIT[0]["original_query"], KIT[0]["siis_response"])
+    real = {sg["actionableDeeplink"]["message"] for a in resp["contexts"][0]["actions"] for sg in a["stepGroups"] if sg["actionableDeeplink"]}
+    seen = {g["link"]["message"] for s in insp["sections"] for g in s["groups"] if g["link"]}
+    real = {"dummy_positive" if m.startswith("Open ") and m.endswith("device Settings") else m for m in real}
+    assert real <= seen and [o["actionName"] for o in insp["order"]] == [a["actionName"] for a in resp["contexts"][0]["actions"]]

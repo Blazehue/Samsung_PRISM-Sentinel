@@ -158,3 +158,38 @@
     </div>
   </div>
 </section>
+
+<!-- ───────────────────────── Pipeline (dark) ───────────────────────── -->
+<section class="band-dark section" id="pipeline">
+  <div class="wrap">
+    <p class="eyebrow on-dark"><span>//</span> Pipeline</p>
+    <h2 class="h2 center on-dark" data-words>How a fix<br>gets built</h2>
+  </div>
+  <div class="wrap rows">
+    <article class="row reveal">
+      <div class="num">01</div>
+      <div class="row-card" id="pc-enrich"><p class="rc-k">Last run</p><p class="rc-v">—</p></div>
+      <div class="row-text"><h3>Enrich the query</h3><p>Device model, the symptom mentioned first, fix-or-how-to intent and a normalised keyword key for the cache.</p></div>
+    </article>
+    <article class="row alt reveal">
+      <div class="row-text"><h3>Parse the article</h3><p>Headers, <code>Step N:</code> headings, sub-group labels and lists become sections. Only instructions survive — copied word for word.</p></div>
+      <div class="row-card" id="pc-parse"><p class="rc-k">Last run</p><p class="rc-v">—</p></div>
+      <div class="num">02</div>
+    </article>
+    <article class="row reveal">
+      <div class="num">03</div>
+      <div class="row-card" id="pc-link"><p class="rc-k">Last run</p><p class="rc-v">—</p></div>
+      <div class="row-text"><h3>Resolve deeplinks</h3><p>The most specific label a step ends on must appear in the catalogue entry. No match but a Settings screen? <code>dummy_positive</code>, named for that screen.</p></div>
+    </article>
+    <article class="row alt reveal">
+      <div class="row-text"><h3>Compose &amp; validate</h3><p>Goal sentence, 2–3-word title, “It will…” descriptions, auto / manual / critical — then the kit's pydantic schema and a URL scrub.</p></div>
+      <div class="row-card" id="pc-compose"><p class="rc-k">Last run</p><p class="rc-v">—</p></div>
+      <div class="num">04</div>
+    </article>
+    <article class="row reveal">
+      <div class="num">05</div>
+      <div class="row-card" id="pc-cache"><p class="rc-k">Last run</p><p class="rc-v">—</p></div>
+      <div class="row-text"><h3>Cache the plan</h3><p>Exact repeats return instantly. A reworded query about the same article reuses the plan and recomputes only the goal fields.</p></div>
+    </article>
+  </div>
+</section>

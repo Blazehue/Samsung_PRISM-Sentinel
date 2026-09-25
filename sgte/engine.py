@@ -168,3 +168,40 @@ def _case(w: str) -> str:
     if w.isupper() or w.lower() in PROPER or (len(w) > 1 and w[1:].lower() != w[1:]):
         return w[0].upper() + w[1:] if w.lower() in PROPER else w
     return w.lower()
+
+
+def description(name: str) -> str:
+    """'It will …', 5–7 words, from the action name."""
+    ws = [w.strip("?:.,!") for w in _words(name)]
+    ws = [w for w in ws if w]
+    if not ws:
+        return "It will guide you through the steps"
+    first = ws[0].lower()
+    if first in VERB_PHRASE or (first in VERBS and first not in NOUNISH):
+        verb, obj = _words(VERB_PHRASE.get(first, first)), ws[1:]
+        if first == "turn" and obj and obj[0].lower() in ("on", "off"):
+            verb, obj = verb + [obj[0].lower()], obj[1:]
+        if obj and obj[0].lower() == verb[-1]:          # "attempt to To…", "back up Up…"
+            obj = obj[1:]
+    elif any(w.lower() in ISSUE_NOUNS for w in ws):
+        verb, obj = ["help", "resolve"], [w for w in ws if w.lower() not in ISSUE_NOUNS] + ["issues"]
+    elif name.strip().endswith("?"):
+        verb, obj = ["explain"], ws
+    else:
+        verb, obj = ["cover"], ws
+    obj = [_case(w) for w in obj]
+    room = 7 - 2 - len(verb)
+    if len(obj) > room:                       # articles/possessives go first
+        obj = [w for w in obj if w.lower() not in {"a", "an", "the", "your", "my"}]
+    keep = obj[:room]
+    obj = _trim(obj, room)
+    # "power on" / "turn off": the particle belongs to the verb, keep it.
+    if len(keep) > len(obj) and keep[len(obj)].lower() in ("on", "off") and obj and obj[-1].lower() in ("power", "turn", "switch"):
+        obj.append(keep[len(obj)].lower())
+    out = ["It", "will"] + verb + obj
+    if len(out) < 5:
+        tail = ["on", "your", "device"] if len(out) <= 4 and "device" not in (w.lower() for w in obj) else ["now"]
+        out += tail[: 7 - len(out)]
+    while len(out) < 5:
+        out.append("safely")
+    return PHRASES.sub(lambda m: m.group(0).title(), " ".join(out))

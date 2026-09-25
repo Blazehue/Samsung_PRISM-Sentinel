@@ -136,3 +136,26 @@ def main() -> None:
 
     # A4 — unseen SIIS: format-clean and grounded
     ok, g_ok, g_all = 0, 0, 0
+    for c in unseen:
+        resp = cli.post("/v1/troubleshoot", c)[0].json()
+        if c["siis_response"]["title"] in NO_VIABLE:          # explainer only → guide §4.2 no_match is correct
+            ok += resp.get("contexts") == [] and resp.get("fallback") == "no_match"
+            continue
+        ok += bool(resp.get("contexts")) and not format_errors(resp, uris)
+        a, b = grounding_rate(resp, c["siis_response"])
+        g_ok, g_all = g_ok + a, g_all + b
+    a4 = ok / len(unseen) * (g_ok / g_all if g_all else 0)
+    out["blocks"]["A4_generalisation"] = {"clean": f"{ok}/{len(unseen)}", "grounded_steps": f"{g_ok}/{g_all}",
+                                          "points": round(10 * a4, 1)}
+
+    # A5 — variations: 8–10, distinct from each other and the query
+    counts, sims = [], []
+    for r in rows:
+        vs = cli.post("/v1/variations", {"query": r["original_query"]})[0].json()["query_variations"]
+        counts.append(8 <= len(vs) <= 10)
+        ts = [set(tokens(v)) for v in vs]
+        sims += [jaccard(a, b) for i, a in enumerate(ts) for b in ts[i + 1:]]
+    in_range = sum(counts) / len(counts)
+    mean_sim = statistics.mean(sims) if sims else 1
+    out["blocks"]["A5_variations"] = {"8_to_10": f"{in_range:.0%}", "mean_pairwise_jaccard": round(mean_sim, 3),
+                                      "points": round(5 * in_range * (1 if mean_sim < 0.5 else 0.5), 1)}

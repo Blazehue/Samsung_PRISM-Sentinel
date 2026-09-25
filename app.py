@@ -66,3 +66,30 @@ class TroubleshootRequest(BaseModel):
 
 class VariationsRequest(BaseModel):
     query: str
+
+
+def prewarm() -> int:
+    """Answer every kit case (and its paraphrases) once so repeats are hits."""
+    get_catalog()
+    n = 0
+    if KIT.exists():
+        for r in json.loads(KIT.read_text())["responses"]:
+            siis = r["siis_response"]
+            resp = troubleshoot(r["original_query"], siis)
+            for q in [r["original_query"], *variations(r["original_query"])]:
+                cache.store(q, siis, resp)
+                n += 1
+    return n
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    n = prewarm()
+    log.info("prewarmed %d cache entries", n)
+    yield
+
+
+app = FastAPI(title="Smart Guided Troubleshooting Engine", version="1.0.0", lifespan=lifespan)
+# expose_headers: a simulator hosted elsewhere (?api=…) can still read cache/latency.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+                   expose_headers=["X-Cache", "X-Cache-Hit", "X-Latency-Ms", "X-Cost-Usd"])

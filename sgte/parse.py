@@ -175,3 +175,21 @@ def parse_siis(siis: dict) -> tuple[str, list[Section]]:
                 sec.groups.append(Group(label="", steps=advice))
         if sec.groups and not _informational(sec):
             sections.append(sec)
+    return title, sections
+
+
+def _informational(sec: Section) -> bool:
+    """'What is Screen Mirroring?' style sections explain rather than instruct."""
+    t = sec.title.lower()
+    if t.endswith("?") and not any(is_imperative(s) for s in sec.steps):
+        return True
+    return False
+
+
+def _tidy(s: str) -> str:
+    s = re.sub(r"\s+", " ", s).strip().strip("\"'").rstrip(":;,")
+    if s and s[0].islower():
+        s = s[0].upper() + s[1:]
+    if s and s[-1] not in ".!?":
+        s += "."
+    return s

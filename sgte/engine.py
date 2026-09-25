@@ -143,3 +143,28 @@ def sentence_case(text: str) -> str:
         else:
             out.append(w[:1].upper() + w[1:].lower() if i == 0 else low)
     return " ".join(out)
+
+
+def action_name(sec: Section) -> str:
+    name = _unshout(re.sub(r"\s+", " ", strip_urls(sec.title)).strip(" .:#")) or "Follow Recommended Steps"
+    ws = _words(name)
+    return title_case(" ".join(_trim(ws, 8)) if len(ws) > 8 else name)
+
+
+def label_name(label: str) -> str:
+    """Group label → action name: "To clear the app's cache" → "Clear the App's Cache"."""
+    t = re.sub(r"^(if you want to|when you want to|to|for)\s+", "", label.strip().rstrip(":"), flags=re.I)
+    return title_case(t) if t else ""
+
+
+PROPER = {"samsung", "galaxy", "smartthings", "wi-fi", "bluetooth", "google"}
+PHRASES = re.compile(r"\b(smart view|smart switch|edge panels?|apps edge|secure folder)\b", re.I)
+NOUNISH = {"touch", "view", "power", "set", "screen", "display", "call", "scan", "test", "update", "download"}
+ISSUE_NOUNS = {"issues", "issue", "problems", "problem"}
+PROBLEM_NOUNS = ISSUE_NOUNS | {"crashes", "restarts", "damage", "errors", "failure", "flicker"}   # no "… issues" after these
+
+
+def _case(w: str) -> str:
+    if w.isupper() or w.lower() in PROPER or (len(w) > 1 and w[1:].lower() != w[1:]):
+        return w[0].upper() + w[1:] if w.lower() in PROPER else w
+    return w.lower()

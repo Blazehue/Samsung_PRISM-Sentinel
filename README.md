@@ -115,3 +115,35 @@ POST /v1/troubleshoot
 | 2. Deeplink mapping & sequencing | `sgte/catalog.py`, `sgte/engine.py` | Exact-label index over all 578 entries (description names the page when messages are shared), label extension, open vs on/off vs set-a-value, rejection of neighbouring settings; auto → manual → critical ordering | Exact target screen, not the parent menu: "tap Storage, tap Clear cache" links *Clear cache* |
 | 3. Fast-path caching | `sgte/cache.py` | Exact tier; paraphrase tier that reuses the article's plan; query-only semantic lookup | Rewordings hit (100% on unseen ones) and the answer equals a fresh run byte for byte |
 | 4. REST API service | `app.py`, `Dockerfile` | `/v1/troubleshoot`, `/health`, variations, metrics, simulator endpoints; operational metadata | Never a 500 on odd input; one container serves the API and the simulator |
+
+### Where Gemini fits
+
+**Rules decide, Gemini refines.** The brief's hard requirements are steps from
+the source text only, catalogue URIs copied verbatim, and answers under
+300 ms. Those stay with rules and retrieval, which give 100% grounding, no
+invented links and millisecond latency. The ablation in
+[`metrics.md`](metrics.md) shows why: retrieval alone reaches the right entry
+for only 66% of step-reachable catalogue entries, against 100% for the shipped
+matcher. Gemini (`gemini-3.5-flash-lite`) handles what needs language
+understanding:
+
+| Stage | Gemini's job | Guardrail |
+|---|---|---|
+| `understand` | Names the topic of an article the symptom lexicon doesn't know; rewrites a query into a canonical form when the no-article lookup finds no clear match | 2–3 plain words, else the rules' name. Named from the article, not the query, so cached answers stay stable |
+| `rerank` | For step groups the rules could only give a placeholder link, picks one entry from a shortlist of catalogue candidates, or none | Can't write a URI; an id outside the shortlist rejects the answer; the pick must name the screen the rules found and match the step's on/off |
+| `describe` | "It will…" descriptions in plain language | 5–7 words, starts "It will", no URLs, no promised outcomes ("It will get help from your provider", not "fix") |
+| `variations` | 8–10 paraphrases across registers | Merged with the deterministic set; unique; URL-free |
+
+Steps are never model-written. Each request gets a 5-second Gemini budget, so
+the cold path stays under the 8 s limit. On a 404, 429 or 5xx the next model is
+tried (`gemini-3.1-flash-lite`). Anything invalid, late or failed leaves the
+rules' answer. Gemini runs only on cache misses: hits never call it, so repeats
+stay around 1 ms and $0.
+
+Results are **persisted** in `data/llm_cache.json` (guide Phase 3: "persistent
+local caching with pre-computed query variations"). `scripts/warm_llm_cache.py`
+fills it, and it's committed. So the deployed API, local runs, the tests (which
+never touch the network) and `results.jsonl` all give identical answers, with or
+without a key, and startup makes no burst of calls. Every response's `meta`
+reports `model`, `llm_calls` and `cost_usd` (from real token counts); `/v1/metrics`
+shows the totals.

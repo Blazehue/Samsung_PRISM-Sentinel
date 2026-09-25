@@ -159,3 +159,17 @@ def ask(stage: str, prompt: str, payload, validate, temperature: float = 0.0, de
             if ru:
                 ru.models.add(model)
             return out
+    with _lock:
+        usage["failures"] += 1
+    return None
+
+
+def save_memo() -> bool:
+    """Persist new Gemini results (used by scripts/warm_llm_cache.py)."""
+    global _dirty
+    with _lock:
+        if not _dirty:
+            return False
+        MEMO_FILE.write_text(json.dumps(dict(sorted(_memo.items())), indent=1, ensure_ascii=False) + "\n")
+        _dirty = False
+        return True

@@ -76,3 +76,24 @@ class Cache:
         if b is None:
             return None, None
         return retarget(copy.deepcopy(b.plan), query, b.siis), b.siis
+
+    def _best_bucket(self, text: str):
+        e = enrich(text)
+        kw = set(e.keywords)
+        if not kw:
+            return None
+        vec = embed(e.raw)
+        scored = []
+        with self._lock:
+            for b in self._buckets.values():
+                q_overlap = len(kw & b.query_toks) / len(kw)
+                a_overlap = len(kw & b.siis_toks) / len(kw)
+                sims = [cosine(vec, embed(q)) for q in list(b.responses)[:12]]
+                scored.append((0.5 * q_overlap + 0.3 * a_overlap + 0.2 * max(sims or [0]), b))
+        if not scored:
+            return None
+        scored.sort(key=lambda t: t[0], reverse=True)
+        best, runner = scored[0][0], (scored[1][0] if len(scored) > 1 else 0.0)
+        if best < 0.45 or best - runner < 0.03:
+            return None
+        return scored[0][1]

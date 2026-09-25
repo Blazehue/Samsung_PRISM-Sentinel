@@ -198,3 +198,8 @@ def v1_inspect(req: TroubleshootRequest) -> dict:
             "siis_title": title, "sections": out, "fallback": plan.get("fallback"),
             "order": [{"actionName": a["actionName"], "category": a["category"]}
                       for g in plan.get("contexts", []) for a in g["actions"]]}
+
+
+# The simulator site. Mounted last so API routes win.
+if WEB.exists():
+    app.mount("/", StaticFiles(directory=WEB, html=True), name="web")

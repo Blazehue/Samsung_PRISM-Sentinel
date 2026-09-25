@@ -224,3 +224,24 @@ The API has no auth, as the judging harness requires. It never returns a 500:
 - HTML and markdown markup is stripped.
 - Sentences that point at a URL are dropped whole.
 - `meta` and `fallback` are extra keys, which the kit's pydantic schema ignores.
+
+## Simulator
+
+The same server hosts a simulator site at **`/`**. Its design follows the Alta
+studio template, and everything on it calls the live API.
+
+- **Run cases.** Pick any of the 20 kit cases or the 14 unseen formats, or write
+  your own. Leave the article empty to try the semantic lookup.
+- **Output.** The plan with its deeplinks, the cache tier, latency, grounding,
+  and the 9 format rules checked on every run.
+- **Test the cache.** **Repeat** should return an exact hit; **Paraphrase**
+  should return a paraphrase hit. The Variations tab runs any of the 8–10
+  rewordings.
+- **Pipeline tab.** Shows what each stage saw and why each deeplink was chosen.
+- **Phone simulation.** Walks through the fix on a simulated Galaxy.
+  Deeplinks open a mocked Settings screen, validation deeplinks "verify", and
+  critical actions ask for confirmation first.
+- **Benchmark.** Runs gates G2–G5 and blocks A1–A5 from the browser against the
+  live API.
+
+To point the site at a different deployment, add `?api=https://host` to its URL.

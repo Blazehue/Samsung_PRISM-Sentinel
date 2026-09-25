@@ -79,3 +79,29 @@ def main() -> None:
     covered = sum(bool(x.get("contexts")) for x in responses)
     valid = sum(not schema_errors(x) for x in responses)
     leaks = sum(len(url_leaks(x)) for x in responses)
+    out["gates"]["G3_coverage"] = f"{covered}/{n} ({covered / n:.0%}) — need ≥95%"
+    out["gates"]["G4_schema_valid"] = f"{valid}/{n} ({valid / n:.0%}) — need ≥90%"
+    out["gates"]["G5_url_leaks"] = f"{leaks} — need 0"
+    gates_ok = out["gates"]["G2_health"] and covered / n >= 0.95 and valid / n >= 0.9 and leaks == 0
+
+    # A1 — format rules
+    fmt = [format_errors(x) for x in responses]
+    a1 = sum(not e for e in fmt) / n
+    out["blocks"]["A1_format"] = {"clean_responses": f"{a1:.0%}", "points": round(15 * a1, 1),
+                                  "errors": [e for es in fmt for e in es][:10]}
+
+    # A2 — deeplink validity + coverage
+    links, bad_links, groups, linked, auto_ok, autos = 0, 0, 0, 0, 0, 0
+    for x in responses:
+        for g in x.get("contexts", []):
+            for a in g["actions"]:
+                if a.get("category") == "auto":
+                    autos += 1
+                    auto_ok += all(sg.get("actionableDeeplink") for sg in a["stepGroups"])
+                for sg in a["stepGroups"]:
+                    groups += 1
+                    for k in ("actionableDeeplink", "validationDeeplink"):
+                        if sg.get(k):
+                            links += 1
+                            bad_links += sg[k]["deeplink"] not in uris
+                    linked += bool(sg.get("actionableDeeplink"))

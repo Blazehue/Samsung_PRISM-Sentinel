@@ -76,3 +76,21 @@ def test_urls_are_stripped():
             "See https://example.com/help or www.samsung.com for details. [link](http://x.y) ![img](a.png)"}
     out = troubleshoot("wifi not working", siis)
     assert out["contexts"] and url_leaks(out) == []
+
+
+def test_markup_and_link_sentences_are_dropped_not_mangled():
+    siis = {"title": "Wi-Fi <b>help</b>", "content": '<a href="http://x.com">link</a> Go to Settings, tap Connections, '
+            "then tap Wi-Fi. Visit https://samsung.com/support for more. Tap [Advanced](http://a.b) to see options."}
+    out = troubleshoot("wifi keeps dropping", siis)
+    steps = [s for a in out["contexts"][0]["actions"] for sg in a["stepGroups"] for s in sg["steps"]]
+    assert steps == ["Go to Settings.", "Tap Connections.", "Tap Wi-Fi.", "Tap Advanced to see options."]
+    assert "<" not in json.dumps(out) and url_leaks(out) == []
+
+
+def test_garbage_siis_returns_no_contexts():
+    assert troubleshoot("123", {"title": "1", "content": "2 3 4"}) == {"contexts": [], "fallback": "no_match"}
+
+
+def test_how_to_query_is_configuration():
+    out = troubleshoot(UNSEEN[5]["query"], UNSEEN[5]["siis_response"])
+    assert out["contexts"][0]["goal"].endswith("Configuration")

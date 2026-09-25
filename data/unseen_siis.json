@@ -1,0 +1,103 @@
+{
+  "_readme": "Hand-written SIIS-style documents in formats the kit does not use (numbered lists, 1) lists, bullets, HTML, ALL-CAPS, Step N: headings, explainer-only prose, one-liners), for the A4 generalisation check. Not Samsung content.",
+  "cases": [
+    {
+      "query": "My Galaxy S23 keeps disconnecting from my Bluetooth earbuds every few minutes.",
+      "siis_response": {
+        "title": "Bluetooth connection keeps dropping on a Galaxy phone",
+        "content": "# Bluetooth devices disconnect frequently\nBluetooth connections can drop because of interference or an outdated pairing record.\n## Re-pair the device\n1. Open Settings.\n2. Tap Connections, then tap Bluetooth.\n3. Tap the gear icon next to your earbuds and tap Unpair.\n4. Put the earbuds in pairing mode and tap them in the list of available devices.\n## Reduce interference\n- Keep the phone and earbuds within 10 metres of each other.\n- Move away from microwaves and Wi-Fi routers while you test the connection.\n## Update your software\nNavigate to Settings, tap Software update, and then tap Download and install."
+      }
+    },
+    {
+      "query": "battery on my galaxy a54 drains really fast even when im not using it",
+      "siis_response": {
+        "title": "Battery drains quickly on Galaxy phone",
+        "content": "If your battery drains faster than expected, some apps may be running in the background. Go to Settings and tap Battery to see which apps use the most power. Tap Background usage limits and turn on Put unused apps to sleep. You can also turn on Power saving from the Quick settings panel. Lowering the screen brightness also helps extend battery life."
+      }
+    },
+    {
+      "query": "Wi-Fi keeps saying connected without internet on my Galaxy Tab S9",
+      "siis_response": {
+        "title": "Connected to Wi-Fi but no internet",
+        "content": "Step 1: Restart your router\nUnplug the router, wait 30 seconds, and plug it back in.\nStep 2: Forget the network\nGo to Settings > Connections > Wi-Fi.\nTap the gear icon next to the network, then tap Forget.\nSelect the network again and enter the password.\nStep 3: Reset network settings\nNavigate to Settings, tap General management, tap Reset, and then tap Reset network settings.\nNote: This removes saved Wi-Fi networks and paired Bluetooth devices."
+      }
+    },
+    {
+      "query": "The notifications from WhatsApp don't show up on my Galaxy S21 until I open the app",
+      "siis_response": {
+        "title": "Notifications are delayed or missing",
+        "content": "Smartphone Notifications are delayed or missing ( Smartphone): ## Check app notification settings\nOpen Settings and tap Notifications. Tap App notifications and make sure the switch next to the app is turned on.\n## Allow background activity\nGo to Settings, tap Apps, select the app, tap Battery, and then select Unrestricted.\n## Turn off Do not disturb\nSwipe down to open the Quick settings panel and tap Do not disturb to turn it off."
+      }
+    },
+    {
+      "query": "my phone got really hot while charging and the back looks swollen",
+      "siis_response": {
+        "title": "Device overheating or swollen battery",
+        "content": "# Overheating and battery swelling\nA swollen battery is a safety risk.\n- Stop using the device immediately and unplug the charger.\n- Do not press on the back of the device or try to remove the battery yourself.\n- Keep the device away from heat sources and flammable materials.\n- Contact an authorized service center to have the battery replaced."
+      }
+    },
+    {
+      "query": "How can I make the text bigger on my Galaxy A35? My mom can't read it.",
+      "siis_response": {
+        "title": "Change the font size on your Galaxy phone",
+        "content": "You can change the font size and style to make text easier to read.\nTo change the font size:\nNavigate to Settings, tap Display, and then tap Font size and style.\nDrag the slider under Font size to adjust the size.\nTo make everything larger:\nNavigate to Settings, tap Display, and then tap Screen zoom.\nDrag the slider to the right."
+      }
+    },
+    {
+      "query": "What is Bixby Routines and how do I use it?",
+      "siis_response": {
+        "title": "What are Bixby Routines?",
+        "content": "## What are Bixby Routines?\nBixby Routines let your phone change settings automatically based on time, place or activity. They can save battery and time.\n## Why use them?\nRoutines reduce repetitive tasks."
+      }
+    },
+    {
+      "query": "phone keeps restarting randomly",
+      "siis_response": {
+        "title": "Galaxy phone restarts by itself",
+        "content": "1) Check for software updates in Settings > Software update.\n2) Boot into Safe mode to see if a downloaded app is the cause.\n3) If the problem continues, back up your data and contact a Samsung service centre."
+      }
+    },
+    {
+      "query": "camera app crashes",
+      "siis_response": {
+        "title": "Camera keeps stopping",
+        "content": "<p>Clear the camera cache.</p><ul><li>Open <b>Settings</b></li><li>Tap <b>Apps</b></li><li>Select <b>Camera</b>, tap <b>Storage</b>, then tap <b>Clear cache</b>.</li></ul><p>For more help visit <a href='https://www.samsung.com/support'>Samsung Support</a>.</p>"
+      }
+    },
+    {
+      "query": "HOW DO I TURN ON DARK MODE",
+      "siis_response": {
+        "title": "DARK MODE",
+        "content": "DARK MODE\n• Swipe down from the top of the screen to open the Quick panel.\n• Tap Dark mode to switch it on.\n• Or go to Settings, tap Display, and then tap Dark."
+      }
+    },
+    {
+      "query": "sim card not detected",
+      "siis_response": {
+        "title": "SIM card not detected",
+        "content": "Remove the SIM tray with the ejection tool and reinsert the SIM card. Restart the phone. If the SIM is still not detected, try another SIM card to check whether the tray or card is faulty."
+      }
+    },
+    {
+      "query": "my phone got wet",
+      "siis_response": {
+        "title": "Liquid damage",
+        "content": "Turn off the device immediately. Do not charge it. Do not use a hair dryer or put it in rice. Wipe it with a soft cloth and take it to a Samsung service centre."
+      }
+    },
+    {
+      "query": "bluetooth wont pair with car",
+      "siis_response": {
+        "title": "Bluetooth pairing with a car",
+        "content": "# Pair with your car\nTo pair:\nOpen Settings.\nTap Connections, and then tap Bluetooth.\nTap the switch to turn on Bluetooth.\nSelect your car from the list of available devices.\nTo unpair:\nTap the gear icon next to the car and tap Unpair."
+      }
+    },
+    {
+      "query": "screen timeout too short",
+      "siis_response": {
+        "title": "Change the screen timeout",
+        "content": "Go to Settings > Display > Screen timeout and choose a longer time."
+      }
+    }
+  ]
+}

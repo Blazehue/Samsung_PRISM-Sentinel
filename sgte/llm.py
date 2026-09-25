@@ -18,3 +18,22 @@ memoised by (stage, model, input) in data/llm_cache.json, a persistent cache
 reproducible with or without a key. The key is read from GEMINI_API_KEY, sent
 in a header and never logged.
 """
+from __future__ import annotations
+
+import contextvars
+import hashlib
+import json
+import os
+import re
+import threading
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+FALLBACK_MODELS = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.1-flash-lite").split(",") if m.strip()]
+TIMEOUT_S = float(os.getenv("GEMINI_TIMEOUT_S", "2.5"))   # per model; two models fit the 5 s request budget
+# USD per 1M tokens. 0 on the AI Studio free tier; set these to your plan's prices.
+PRICE_IN = float(os.getenv("GEMINI_PRICE_IN_PER_M", "0"))
+PRICE_OUT = float(os.getenv("GEMINI_PRICE_OUT_PER_M", "0"))
+STAGES = {s.strip() for s in os.getenv("GEMINI_STAGES", "understand,rerank,describe,variations").split(",") if s.strip()}

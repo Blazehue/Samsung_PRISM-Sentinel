@@ -72,3 +72,32 @@ STATE_WORDS = {"not", "no", "never", "won't", "wont", "can't", "cant", "doesn't"
 def _unshout(text: str) -> str:
     """'DARK MODE' → 'Dark Mode'; short acronyms (SIM, USB, PC) stay."""
     return re.sub(r"\b[A-Z]{4,}\b", lambda m: m.group(0).capitalize(), text)
+
+
+def goal_name(siis_title: str, query: str, head: str = "", deadline: float | None = None, live: bool = True) -> str:
+    syms = symptoms_of(siis_title) or symptoms_of(query, by_position=True)
+    if syms:
+        return syms[0]
+    # Unknown topic: Gemini names it from the article (not the query, so the
+    # name is cache-stable); validated to 2–3 plain words, else the rules below.
+    if llm.available("understand") and (siis_title or head):
+        named = llm.topic(siis_title, head, deadline=deadline, live=live)
+        if named:
+            return title_case(named)
+    ws = re.findall(r"[A-Za-z][\w'-]*", _unshout(siis_title))
+    # "What are Bixby Routines?" → "Bixby Routines"; "Change the screen timeout" → "screen timeout"
+    if ws and ws[0].lower() in {"what", "how", "why", "when", "where", "which", "who"}:
+        ws = ws[1:]
+        while ws and ws[0].lower() in STATE_WORDS | {"do", "can", "to", "should", "i", "you"}:
+            ws = ws[1:]
+    while ws and ws[0].lower() in VERBS:
+        ws = ws[1:]
+    for k, w in enumerate(ws):
+        if w.lower() in STATE_WORDS:
+            ws = ws[:k]
+            break
+    ws = [w for w in ws if w.lower() not in STOP and w.lower() not in SMALL]
+    ws = _trim(ws, 3) or ["Device", "Support"]
+    if len(ws) == 1:
+        ws.append("Issue")
+    return " ".join(w[0].upper() + w[1:] for w in ws)

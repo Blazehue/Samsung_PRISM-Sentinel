@@ -288,3 +288,24 @@ def step_group(name: str, steps: list[str], link: bool = True) -> dict:
         if screen:
             sg["actionableDeeplink"] = _dummy(screen)
     return sg
+
+
+# ---------------------------------------------------------------- assembly
+def _score(query_toks: set, siis_toks: set, sym_agree: bool) -> float:
+    if not query_toks:
+        return 0.7
+    cov = len(query_toks & siis_toks) / len(query_toks)
+    s = 0.55 + 0.35 * cov + (0.08 if sym_agree else 0.0)
+    return round(min(0.99, max(0.05, s)), 2)
+
+
+def _whole_doc_desc(gname: str, issue: bool) -> str:
+    """Description for an untitled article's single action, named after the goal.
+    Longest template that still fits the 5–7-word rule for a 2–3-word name."""
+    name = [_case(w) for w in _words(gname)]
+    templates = ([["help", "resolve"], ["resolve"]], ) if issue else ([["help", "you", "configure"], ["configure"]], )
+    for verb in templates[0]:
+        out = ["It", "will", *verb, *name] + (["issues"] if issue and name[-1].lower() not in PROBLEM_NOUNS else [])
+        if 5 <= len(out) <= 7:
+            return PHRASES.sub(lambda m: m.group(0).title(), " ".join(out))
+    return description(gname)

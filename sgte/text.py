@@ -18,3 +18,16 @@ very just also only then when while where which who whom what how why all any ea
 other own same again once further up down out off above below between through during before after until
 please samsung galaxy device phone tablet mobile smartphone
 """.split())
+
+_SYNONYMS = {
+    "display": "screen", "monitor": "screen", "lcd": "screen",
+    "blank": "black", "dark": "black", "off": "black",
+    "flickering": "flicker", "flickers": "flicker", "flashing": "flicker", "flashes": "flicker", "flash": "flicker",
+    "wifi": "wi-fi", "wlan": "wi-fi",
+    "responding": "respond", "responsive": "respond", "unresponsive": "respond",
+    "restart": "reboot", "restarting": "reboot", "reboot": "reboot",
+    "apps": "app", "application": "app", "applications": "app",
+    "cracked": "crack", "cracks": "crack", "broken": "crack",
+    "rotate": "rotation", "rotating": "rotation", "rotates": "rotation", "auto-rotate": "rotation",
+    "touchscreen": "touch", "tap": "touch",
+}

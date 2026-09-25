@@ -142,3 +142,36 @@ def parse_siis(siis: dict) -> tuple[str, list[Section]]:
         raw_sections.append((cur_title, cur_lines))
 
     sections: list[Section] = []
+    for sec_title, lines in raw_sections:
+        sec = Section(title=sec_title, text=" ".join(lines))
+        group = Group(label="")
+        for line in lines:
+            line = STEP_PREFIX.sub("", line)
+            # A sentence that pointed at a URL is a link reference; dropping only
+            # the URL would leave "Visit for more." behind.
+            line = " ".join(x for x in _sentences(line) if not URL_PATTERN.search(x))
+            if not line or SKIP_PATTERNS.search(line):
+                continue
+            if GROUP_LABEL.match(line):
+                if group.steps:
+                    sec.groups.append(group)
+                group = Group(label=line.rstrip(":").strip())
+                continue
+            for sent in _sentences(line):
+                if is_imperative(sent) and len(sent.split()) >= 2:
+                    step = _tidy(sent)
+                    if step not in group.steps:          # same instruction repeated verbatim
+                        group.steps.append(step)
+        if group.steps:
+            sec.groups.append(group)
+
+        if not sec.groups:
+            # Prose-only section: keep genuine advice sentences verbatim (e.g.
+            # "…it is recommended to contact your email service provider…").
+            advice = [_tidy(s) for s in _sentences(sec.text)
+                      if ADVICE.search(s) and not SKIP_PATTERNS.search(s) and not URL_PATTERN.search(s)]
+            advice = [a for a in advice if 4 <= len(a.split()) <= 45][:3]
+            if advice:
+                sec.groups.append(Group(label="", steps=advice))
+        if sec.groups and not _informational(sec):
+            sections.append(sec)

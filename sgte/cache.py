@@ -97,3 +97,19 @@ class Cache:
         if best < 0.45 or best - runner < 0.03:
             return None
         return scored[0][1]
+
+    def store(self, query: str, siis: dict, response: dict) -> None:
+        e = enrich(query)
+        key = siis_key(siis)
+        with self._lock:
+            b = self._buckets.get(key)
+            if b is None:
+                toks = set(tokens(f"{siis.get('title', '')} {siis.get('content', '')}"))
+                b = self._buckets[key] = _Bucket(siis_toks=toks, plan=copy.deepcopy(response),
+                                                 siis={"title": siis.get("title", ""), "content": siis.get("content", "")})
+            self._buckets.move_to_end(key)
+            if len(b.responses) < self._max_per:
+                b.responses[e.normalised] = copy.deepcopy(response)
+            b.query_toks |= set(e.keywords)
+            while len(self._buckets) > self._max_siis:
+                self._buckets.popitem(last=False)

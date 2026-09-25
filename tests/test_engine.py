@@ -396,3 +396,30 @@ def test_gemini_invalid_output_falls_back(gemini):
     assert _llm.describe([{"action": "Y", "steps": ["Tap Y."]}]) is None
     script["*"] = "not json"
     assert _llm.topic("Some title", "text") is None
+
+
+def test_gemini_overloaded_model_falls_back_to_next(gemini):
+    script, calls = gemini
+    script[_llm.MODEL] = 503
+    script["*"] = json.dumps({"topic": "Screen Timeout"})
+    assert _llm.topic("Change how long the display stays on", "Go to Settings.") == "Screen Timeout"
+    assert calls[0] == _llm.MODEL and calls[1] != _llm.MODEL
+
+
+def test_gemini_rerank_cannot_invent_or_leave_the_shortlist(gemini):
+    script, _ = gemini
+    groups = [{"steps": ["Tap Wi-Fi."], "candidates": [{"id": "DL-0313", "message": "View WiFi Settings", "description": "…"}]}]
+    script["*"] = json.dumps({"choices": ["DL-9999"]})          # not in the shortlist
+    assert _llm.pick_deeplinks(groups) is None
+    script["*"] = json.dumps({"choices": ["none"]})
+    assert _llm.pick_deeplinks(groups) == [None]
+
+
+def test_gemini_failure_leaves_the_deterministic_plan(gemini):
+    script, _ = gemini
+    script["*"] = 503                                          # every model overloaded
+    r = KIT[0]
+    import sgte.llm as L
+    out = troubleshoot(r["original_query"], r["siis_response"])
+    assert out["contexts"] and format_errors(out, get_catalog().uris) == []
+    assert L.usage["failures"] > 0

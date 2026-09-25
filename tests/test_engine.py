@@ -358,3 +358,22 @@ def test_value_setting_steps_prefer_the_adjust_entry():
 
 # ---------------------------------------------------------------- Gemini layer (stubbed: never the network)
 from sgte import llm as _llm
+
+
+@pytest.fixture
+def gemini(monkeypatch):
+    """Pretend a key is set and route calls to a scripted stub; memo isolated."""
+    calls = []
+    script = {}
+
+    def fake_call(model, prompt, temperature, timeout):
+        calls.append(model)
+        reply = script.get(model, script.get("*"))
+        if isinstance(reply, int):
+            return None, 0, 0, reply                 # an HTTP error status
+        return reply, 10, 5, 200
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(_llm, "_call", fake_call)
+    monkeypatch.setattr(_llm, "_memo", {})
+    return script, calls

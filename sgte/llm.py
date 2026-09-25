@@ -37,3 +37,20 @@ TIMEOUT_S = float(os.getenv("GEMINI_TIMEOUT_S", "2.5"))   # per model; two model
 PRICE_IN = float(os.getenv("GEMINI_PRICE_IN_PER_M", "0"))
 PRICE_OUT = float(os.getenv("GEMINI_PRICE_OUT_PER_M", "0"))
 STAGES = {s.strip() for s in os.getenv("GEMINI_STAGES", "understand,rerank,describe,variations").split(",") if s.strip()}
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+MEMO_FILE = Path(__file__).resolve().parent.parent / "data" / "llm_cache.json"
+URLISH = re.compile(r"https?://|www\.|\.com\b|\.html?\b|!\[|<a\s", re.I)
+
+usage = {"calls": 0, "failures": 0, "memo_hits": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+_lock = threading.Lock()
+
+
+def _load_memo() -> dict:
+    try:
+        return json.loads(MEMO_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+_memo: dict = _load_memo()
+_dirty = False

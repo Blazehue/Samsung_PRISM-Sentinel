@@ -411,3 +411,19 @@ code { font: 500 .86em var(--mono); background: rgba(0, 0, 0, .05); padding: 1px
 .sm { background: var(--surface-2); border-radius: var(--r-md); padding: 16px; box-shadow: inset 0 0 0 1px var(--line); }
 .sm span { display: block; font: 400 11px/14px var(--text); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
 .sm b { display: block; margin-top: 6px; font: 500 22px/1 var(--display); }
+
+/* ───────── API cards ───────── */
+.api-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 64px; }
+.api { display: flex; flex-direction: column; padding: 28px; }
+.api .badge { align-self: flex-start; }
+.path { margin: 22px 0 6px; font: 600 clamp(30px, 3vw, 44px)/1.05 var(--display); letter-spacing: -.03em; word-break: break-word; }
+.api-lead { margin: 0 0 18px; font-size: 15px; color: var(--ink-2); }
+.checks { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; font-size: 14px; line-height: 20px; color: var(--muted); }
+.checks li { display: flex; gap: 10px; }
+.checks li::before { content: "✓"; color: var(--ink); font-size: 12px; }
+.snippet { margin: 0 0 20px; padding: 14px 16px; border-radius: var(--r-sm); background: var(--bg); font: 400 12px/18px var(--mono); color: var(--ink-2); white-space: pre-wrap; word-break: break-all; }
+.api-try { margin-top: auto; display: flex; justify-content: space-between; align-items: center; height: 52px; padding: 0 20px; border-radius: 14px; border: 0; background: transparent; cursor: pointer; font: 500 15px/1 var(--text); box-shadow: inset 0 0 0 1px var(--line); transition: background .25s; }
+.api-try:hover { background: var(--bg); }
+.api-try.dark { background: var(--ink); color: var(--surface); box-shadow: none; }
+.api-try.dark:hover { background: #000; }
+.try-out { margin: 12px 0 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--ink); color: #d4d4d4; font: 400 11px/17px var(--mono); max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-word; }

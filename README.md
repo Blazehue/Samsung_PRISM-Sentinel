@@ -147,3 +147,24 @@ never touch the network) and `results.jsonl` all give identical answers, with or
 without a key, and startup makes no burst of calls. Every response's `meta`
 reports `model`, `llm_calls` and `cost_usd` (from real token counts); `/v1/metrics`
 shows the totals.
+
+## Theme 2 guide compliance
+
+| Guide requirement | How SGTE meets it |
+|---|---|
+| Goal: `Follow these steps to perform this <Topic> Troubleshooting` (or `Configuration`) | Topic from the article, else the user's symptom. Fix-type queries get *Troubleshooting*; how-to queries get *Configuration*. No trailing period, as in the guide's syntax and both official examples |
+| Title 2–3 words, sentence case | `Blank screen`, `Email connection`, `SIM card detection` |
+| actionName Title Case; one screen/feature per action | "To clear the app's cache:" and "To clear the app's data:" become two actions |
+| Description: 5–7 words, starts "It will" | Built from the action's verb and fitted to length |
+| Steps: imperative, one physical interaction each | "Navigate to Settings, tap Display, and then tap Screen timeout." → three steps. Pieces stay substrings of the article |
+| `auto`: Settings screen reachable by deeplink | Every step group carries a deeplink |
+| `critical`: disruptive or irreversible (factory reset, restart, firmware update, safe mode), ordered last | Also clearing data, reset network settings and safety hazards (swelling, liquid damage) |
+| `manual`: physical interventions, no actionable deeplink | Enforced. A section mixing linked and unlinked groups is split |
+| Order: least disruptive first | auto → manual → escalations (contact support / service centre) → critical |
+| Zero URL leaks; catalogue integrity | URLs, link sentences and HTML stripped; deeplinks copied exactly; validation copied with `value` as a string |
+| No viable solution → `contexts: []` + `"fallback": "no_match"` | Articles with no instructions (e.g. "What are Bixby Routines?") |
+| `siis_response` omitted → semantic lookup against pre-warmed entries | `cache.lookup_query`, else `"fallback": "no_siis_context"` |
+| Operational metadata (latency, hit flag, cost) | `meta` in every body (Appendix B) plus `X-Cache`, `X-Cache-Hit`, `X-Latency-Ms`, `X-Cost-Usd` headers |
+| `query_variations`: 8–10 across formal, casual, keyword-only, frustrated, typo-inclusive | All five styles in every set, plus question and support-ticket phrasings |
+| Appendix B worked example (swipe navigation) | Reproduced as a test: same goal, title, action name and first steps. It links the real catalogue entry *View Navigation bar* where the guide's example used a placeholder |
+| Appendix C `metrics.md` report | Generated from real runs by `scripts/metrics_report.py`, including the ablation |

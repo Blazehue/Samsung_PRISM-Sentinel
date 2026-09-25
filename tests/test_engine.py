@@ -94,3 +94,19 @@ def test_garbage_siis_returns_no_contexts():
 def test_how_to_query_is_configuration():
     out = troubleshoot(UNSEEN[5]["query"], UNSEEN[5]["siis_response"])
     assert out["contexts"][0]["goal"].endswith("Configuration")
+
+
+def test_parser_handles_step_headers():
+    _, secs = parse_siis(UNSEEN[2]["siis_response"])
+    assert [s.title for s in secs] == ["Restart your router", "Forget the network", "Reset network settings"]
+
+
+def test_empty_siis_does_not_crash():
+    assert troubleshoot("screen black", {"title": "", "content": ""}) == {"contexts": [], "fallback": "no_match"}
+
+
+def test_variations_count_and_diversity():
+    for r in KIT:
+        vs = variations(r["original_query"])
+        assert 8 <= len(vs) <= 10 and len(set(vs)) == len(vs)
+        assert not any(url_leaks(v) for v in vs)

@@ -13,3 +13,20 @@
   <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
+
+<!-- ───────────────────────── Floating pill nav ───────────────────────── -->
+<nav class="navpill" id="nav" aria-label="Primary">
+  <a href="#top" class="brand">SGTE<sup>®</sup></a>
+  <span class="api-state" id="apiState" title="API status"><i></i><span>connecting</span></span>
+  <button class="grid-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="menu">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="2"/><rect x="11" y="2" width="7" height="7" rx="2"/><rect x="2" y="11" width="7" height="7" rx="2"/><rect x="11" y="11" width="7" height="7" rx="2"/></svg>
+  </button>
+  <div class="menu" id="menu" hidden>
+    <a href="#simulator"><span>01</span>Simulator</a>
+    <a href="#pipeline"><span>02</span>Pipeline</a>
+    <a href="#benchmark"><span>03</span>Benchmark</a>
+    <a href="#api"><span>04</span>API</a>
+    <a href="#faq"><span>05</span>FAQ</a>
+    <p class="menu-foot" id="menuApi">API · —</p>
+  </div>
+</nav>

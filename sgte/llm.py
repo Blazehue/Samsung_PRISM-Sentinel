@@ -87,3 +87,25 @@ def available(stage: str) -> bool:
 def _memo_key(stage: str, payload) -> str:
     raw = json.dumps([stage, MODEL, payload], sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+
+def _call(model: str, prompt: str, temperature: float, timeout: float):
+    """One HTTP call → (text | None, input tokens, output tokens, status | None)."""
+    import httpx
+    try:
+        r = httpx.post(ENDPOINT.format(model=model),
+                       headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"], "content-type": "application/json"},
+                       json={"contents": [{"parts": [{"text": prompt}]}],
+                             "generationConfig": {"temperature": temperature, "responseMimeType": "application/json"}},
+                       timeout=timeout)
+    except Exception:
+        return None, 0, 0, None                      # timeout / network
+    if r.status_code != 200:
+        return None, 0, 0, r.status_code
+    try:
+        data = r.json()
+        meta = data.get("usageMetadata", {})
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        return text, meta.get("promptTokenCount", 0), meta.get("candidatesTokenCount", 0), 200
+    except Exception:
+        return None, 0, 0, 200

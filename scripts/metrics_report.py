@@ -65,3 +65,26 @@ def compliance():
     return {"n": n, "schema": schema_ok / n, "rules": rules_ok / n, "leaks": leaks,
             "catalog": valid / len(links) if links else 1.0, "n_links": len(links),
             "auto": auto_ok / len(autos) if autos else 1.0, "n_auto": len(autos), "outs": list(zip(cases, outs))}
+
+
+# ------------------------------------------------------------------ 2. accuracy
+def step_accuracy(pairs):
+    """0–3 = completeness + correctness + ordering (each 0–1). No human-labelled
+    ground truth ships with the kit (the guide's samples/ folder isn't in it), so:
+      completeness — share of the article's UI-interaction clauses present in the plan
+      correctness  — share of plan steps found verbatim in the article (grounding)
+      ordering     — 1 if actions run auto → manual → critical, else 0"""
+    comp, corr, order = [], [], []
+    rank = {"auto": 0, "manual": 1, "critical": 2}
+    for (q, siis), out in pairs:
+        src = clean_markup(siis["content"])
+        clauses = [p for s in _sentences(src.replace("\n", ". ")) for p in split_interactions(s) if UI_START.match(p)]
+        plan = " ".join(st.lower() for g in out["contexts"] for a in g["actions"] for sg in a["stepGroups"] for st in sg["steps"])
+        norm = lambda t: re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+        if clauses:
+            comp.append(sum(norm(c) in norm(plan) for c in clauses) / len(clauses))
+        ok, tot = grounding_rate(out, siis)
+        corr.append(ok / tot if tot else 1.0)
+        cats = [rank[a["category"]] for g in out["contexts"] for a in g["actions"]]
+        order.append(1.0 if cats == sorted(cats) else 0.0)
+    return statistics.mean(comp), statistics.mean(corr), statistics.mean(order)

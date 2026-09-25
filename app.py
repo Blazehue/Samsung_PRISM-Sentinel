@@ -110,3 +110,32 @@ def _meta(ms: float, hit: bool, ru: llm.RequestUsage) -> dict:
     model = llm.MODEL if (llm.enabled() or ru.memo_hits) else f"{ENGINE}-deterministic"
     return {"latency_ms": round(ms, 2), "cache_hit": hit, "model": model,
             "cost_usd": round(ru.cost_usd, 6), "llm_calls": ru.calls}
+
+
+@app.post("/v1/troubleshoot")
+def v1_troubleshoot(req: TroubleshootRequest) -> JSONResponse:
+    t = time.perf_counter()
+    ru = llm.begin_request()
+    siis, query = req.siis(), req.query or ""
+    if not (siis.get("title", "").strip() or siis.get("content", "").strip()):
+        # Guide §5: siis_response omitted → semantic lookup against pre-warmed entries.
+        resp, _ = cache.lookup_query(query) if query.strip() else (None, None)
+        kind = "semantic" if resp else "miss"
+        resp = resp or {"contexts": [], "fallback": "no_siis_context"}
+    else:
+        resp, kind = cache.lookup(query, siis)
+        if resp is None:
+            try:
+                resp = troubleshoot(query, siis)
+            except Exception:                      # never 500 on odd SIIS text
+                log.exception("engine failure")
+                resp = {"contexts": [], "fallback": "no_match"}
+            if resp["contexts"]:
+                cache.store(query, siis, resp)
+    ms = (time.perf_counter() - t) * 1000
+    hit = kind in ("exact", "paraphrase", "semantic")
+    cache.record(kind, ms)
+    meta = _meta(ms, hit, ru)
+    body = {**resp, "meta": meta}
+    return JSONResponse(body, headers={"X-Cache": kind, "X-Cache-Hit": str(hit).lower(),
+                                       "X-Latency-Ms": f"{ms:.2f}", "X-Cost-Usd": str(meta["cost_usd"])})

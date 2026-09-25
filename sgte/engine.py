@@ -205,3 +205,16 @@ def description(name: str) -> str:
     while len(out) < 5:
         out.append("safely")
     return PHRASES.sub(lambda m: m.group(0).title(), " ".join(out))
+
+
+# ---------------------------------------------------------------- steps
+UI_VERB = r"(?:tap|select|touch|press|open|swipe|navigate|go|choose|scroll|enter|toggle|turn|drag|search|find)"
+DANGLING = {"for", "to", "and", "or", "the", "a", "an", "on", "in", "with", "of", "from", "by"}
+SPLIT = r",?\s+(?:and\s+)?then\s+|;\s+|,\s+(?:and\s+)?(?=" + UI_VERB + r"\b)|\s+and\s+(?=(?:tap|select|press|turn)\b)"
+SPLIT_KEEP = re.compile("(" + SPLIT + ")", re.I)          # capturing: separators come back verbatim
+
+
+def _finish(p: str) -> str:
+    p = p.strip().rstrip(",;:")
+    p = p[:1].upper() + p[1:]
+    return p if p.endswith((".", "!", "?")) else p + "."

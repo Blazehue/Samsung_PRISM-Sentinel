@@ -128,3 +128,19 @@ def test_api_health_and_troubleshoot(client):
     assert format_errors(r.json()) == []
     r = client.post("/v1/troubleshoot", json=UNSEEN[0])
     assert r.status_code == 200 and r.json()["contexts"]
+
+
+def test_api_tolerates_missing_fields(client):
+    for body in ({"query": "how do I bake bread"}, {}, {"query": None, "siis_response": None}):
+        r = client.post("/v1/troubleshoot", json=body)
+        assert r.status_code == 200 and r.json()["contexts"] == [] and r.json()["fallback"] == "no_siis_context"
+    r = client.post("/v1/troubleshoot", json={"query": "wifi", "siis_response": "Go to Settings, tap Connections, then tap Wi-Fi."})
+    assert r.status_code == 200 and r.json()["contexts"]
+
+
+def test_input_txt_phrasing_gets_the_same_answer(client):
+    """input.txt drops the '1. ' prefix some original_query values carry."""
+    lines = [l.strip() for l in (DATA / "student_kit" / "input.txt").read_text().splitlines() if l.strip()]
+    for q, r in zip(lines, KIT):
+        got = client.post("/v1/troubleshoot", json={"query": q, "siis_response": r["siis_response"]}).json()
+        assert got["contexts"] and strip_meta(got) == troubleshoot(r["original_query"], r["siis_response"])

@@ -1,0 +1,60 @@
+/* SGTE simulator — design language after altastudio.framer.website:
+   neutral greys, Switzer display + Inter text, 24px cards, floating pill nav,
+   grainy monochrome wave, dark bands with rounded light sections over them. */
+
+:root {
+  --bg: #f5f5f5;
+  --surface: #fafafa;
+  --surface-2: #ffffff;
+  --ink: #171717;
+  --ink-2: #262626;
+  --muted: #737373;
+  --faint: #a3a3a3;
+  --line: #e5e5e5;
+  --line-2: #d4d4d4;
+  --dark: #0a0a0a;
+  --dark-2: #171717;
+  --dark-3: #1f1f1f;
+  --dark-line: #262626;
+  --on-dark: #fafafa;
+  --on-dark-muted: #8a8a8a;
+  --ok: #15803d;
+  --ok-bg: #dcfce7;
+  --warn: #b45309;
+  --crit: #c2410c;
+  --crit-bg: #fff1eb;
+
+  --display: "Switzer", "Inter", system-ui, sans-serif;
+  --text: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r-lg: 24px;
+  --r-md: 16px;
+  --r-sm: 12px;
+  --gutter: 48px;
+  --sec: 140px;
+  --shadow: 0 3px 6px rgba(69, 63, 55, .02), 0 6px 12px rgba(43, 39, 33, .05);
+  --shadow-lg: 0 1px 3px -1px #c4c4c4, 0 20px 40px -12px rgba(0, 0, 0, .12);
+  --ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }          /* component display rules must not beat the attribute */
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 16px/24px var(--text); -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img, svg, canvas { display: block; }
+a { color: inherit; text-decoration: none; }
+button, input, textarea { font: inherit; color: inherit; }
+code { font: 500 .86em var(--mono); background: rgba(0, 0, 0, .05); padding: 1px 5px; border-radius: 6px; }
+.band-dark code, .footer code { background: rgba(255, 255, 255, .08); }
+::selection { background: var(--ink); color: var(--surface); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+
+.wrap { width: 100%; max-width: 1480px; margin: 0 auto; padding: 0 var(--gutter); }
+.muted { color: var(--muted); }
+.small { font-size: 13px; line-height: 18px; }
+.mono { font-family: var(--mono); }

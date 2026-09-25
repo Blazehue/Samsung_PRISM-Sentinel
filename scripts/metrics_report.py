@@ -46,3 +46,22 @@ def timed(fn, *a):
     t = time.perf_counter()
     out = fn(*a)
     return out, (time.perf_counter() - t) * 1000
+
+
+# ------------------------------------------------------------------ 1. compliance
+def compliance():
+    cases = [(r["original_query"], r["siis_response"]) for r in KIT] + \
+            [(c["query"], c["siis_response"]) for c in UNSEEN if c["siis_response"]["title"] not in NO_VIABLE]
+    outs = [troubleshoot(q, s) for q, s in cases]
+    n = len(outs)
+    schema_ok = sum(not schema_errors(o) for o in outs)
+    rules_ok = sum(not format_errors(o) for o in outs)
+    leaks = sum(len(url_leaks(o)) for o in outs)
+    links = [sg[k] for o in outs for g in o["contexts"] for a in g["actions"] for sg in a["stepGroups"]
+             for k in ("actionableDeeplink", "validationDeeplink") if sg.get(k)]
+    valid = sum(l["deeplink"] in CAT.uris for l in links)
+    autos = [a for o in outs for g in o["contexts"] for a in g["actions"] if a["category"] == "auto"]
+    auto_ok = sum(all(sg["actionableDeeplink"] and sg["actionableDeeplink"]["deeplink"] in CAT.uris for sg in a["stepGroups"]) for a in autos)
+    return {"n": n, "schema": schema_ok / n, "rules": rules_ok / n, "leaks": leaks,
+            "catalog": valid / len(links) if links else 1.0, "n_links": len(links),
+            "auto": auto_ok / len(autos) if autos else 1.0, "n_auto": len(autos), "outs": list(zip(cases, outs))}

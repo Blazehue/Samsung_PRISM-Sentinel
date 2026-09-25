@@ -235,3 +235,33 @@ def test_whole_catalogue_sweep():
     targets = [e for e in cat.entries if not e.description.startswith("Retrieves")]
     assert ok / len(targets) >= 0.99, (ok, len(targets), wrong)
     assert len(wrong) <= 2, wrong
+
+
+# ---------------------------------------------------------------- Theme 2 guide (PDF) requirements
+import re as _re
+
+ALL_PLANS = [(q, s, troubleshoot(q, s)) for q, s in CASES]
+
+
+def test_guide_critical_actions_are_last_and_order_is_least_disruptive_first():
+    rank = {"auto": 0, "manual": 1, "critical": 2}
+    for q, s, out in ALL_PLANS:
+        for g in out["contexts"]:
+            cats = [rank[a["category"]] for a in g["actions"]]
+            assert cats == sorted(cats), (s["title"], [a["category"] for a in g["actions"]])
+
+
+def test_guide_manual_actions_never_carry_a_deeplink():
+    for q, s, out in ALL_PLANS:
+        for g in out["contexts"]:
+            for a in g["actions"]:
+                if a["category"] == "manual":
+                    assert not any(sg["actionableDeeplink"] for sg in a["stepGroups"]), a["actionName"]
+
+
+def test_guide_restart_update_safe_mode_and_reset_are_critical():
+    for q, s, out in ALL_PLANS:
+        for g in out["contexts"]:
+            for a in g["actions"]:
+                if _re.search(r"\b(restart|safe mode|factory data reset)\b", a["actionName"], _re.I):
+                    assert a["category"] == "critical", a["actionName"]

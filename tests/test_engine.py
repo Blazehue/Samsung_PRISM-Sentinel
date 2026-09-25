@@ -311,3 +311,29 @@ def test_guide_no_siis_uses_semantic_lookup_and_meta(client):
     assert body["meta"]["cache_hit"] is True and body["meta"]["cost_usd"] == 0.0 and "latency_ms" in body["meta"]
     miss = client.post("/v1/troubleshoot", json={"query": "how do I bake sourdough bread"}).json()
     assert miss["contexts"] == [] and miss["fallback"] == "no_siis_context"
+
+
+def test_guide_appendix_b_worked_example():
+    """The guide's own worked example (swipe navigation), rebuilt as an article."""
+    siis = {"title": "Swipe gestures go the wrong way",
+            "content": "## Configure navigation bar settings\nNavigate to and open Settings.\nTap on Display.\nTap on Navigation bar.\n"
+                       "Select your preferred navigation type between Buttons and Swipe gestures.\n"
+                       "Optionally toggle on Gesture hint to display guidance lines at the bottom of the screen."}
+    out = troubleshoot("The mobile phone swipe navigation moves up or down instead of left or right after downloading an app", siis)
+    g = out["contexts"][0]
+    assert format_errors(out, get_catalog().uris) == [] and g["goal"].endswith("Troubleshooting")
+    a = g["actions"][0]
+    assert a["actionName"] == "Configure Navigation Bar Settings" and a["category"] == "auto"
+    assert a["stepGroups"][0]["steps"][:3] == ["Navigate to and open Settings.", "Tap on Display.", "Tap on Navigation bar."]
+    assert a["stepGroups"][0]["actionableDeeplink"]["message"] == "View Navigation bar"      # a real catalogue entry, not a placeholder
+
+
+def test_open_only_steps_open_the_page_not_a_toggle():
+    """A step with no on/off opens the page; it must not link Enable/Disable,
+    which would flip the setting as a side effect."""
+    for label, page in (("Fast cable charging", "fast cable charging"), ("Battery protection", "battery protection"),
+                        ("Power saving mode", "power saving mode")):
+        m = get_catalog().match("x", [f"Open Settings, tap {label}."])
+        assert m and not m.entry.message.startswith(("Enable", "Disable")) and page in m.entry.description.lower()
+    m = get_catalog().match("x", ["Open Settings, tap Battery protection, and then tap the switch to turn it on."])
+    assert m.entry.message == "Enable Battery protection"

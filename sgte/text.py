@@ -31,3 +31,25 @@ _SYNONYMS = {
     "rotate": "rotation", "rotating": "rotation", "rotates": "rotation", "auto-rotate": "rotation",
     "touchscreen": "touch", "tap": "touch",
 }
+
+
+def stem(w: str) -> str:
+    w = _SYNONYMS.get(w, w)
+    for suf in ("ing", "edly", "ed", "es", "s"):
+        if len(w) > 4 and w.endswith(suf) and not w.endswith("ss"):
+            w = w[: -len(suf)]
+            break
+    return _SYNONYMS.get(w, w)
+
+
+def tokens(text: str, keep_stop: bool = False) -> list[str]:
+    out = []
+    for w in _WORD.findall((text or "").lower()):
+        if not keep_stop and w in STOP:
+            continue
+        out.append(stem(w))
+    return out
+
+
+def jaccard(a: set, b: set) -> float:
+    return len(a & b) / len(a | b) if a and b else 0.0

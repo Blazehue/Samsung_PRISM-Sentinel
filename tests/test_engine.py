@@ -193,3 +193,19 @@ def test_polarity_reads_turn_it_off_and_last_mention():
 
 def test_exact_label_beats_partial_match():
     assert _link(["Open Settings, tap Connections, and then tap Bluetooth."]) == "View Bluetooth"      # not "Bluetooth scanning"
+
+
+def test_label_cut_at_and_or_to_is_extended():
+    m = get_catalog().match("x", ["Open Settings, and then tap Touch and hold to edit."])
+    assert m and "touch and hold to edit" in (m.entry.description + m.entry.message).lower()
+
+
+def test_ui_chrome_label_on_another_os_gets_no_link():
+    steps = ["On your PC, select Start, then begin typing Bluetooth and other device settings and select it when it appears.",
+             "If you're using Windows 11, select More options (three dots) next to the device."]
+    assert _link(steps) != "View More options"
+
+
+def test_screenshot_settings_are_not_skipped_as_image_references():
+    _, secs = parse_siis({"title": "Screenshots", "content": "Open Settings, tap Advanced features, and then tap Palm swipe to capture screenshot."})
+    assert secs and secs[0].steps

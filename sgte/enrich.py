@@ -42,3 +42,22 @@ SYMPTOMS: list[tuple[str, str]] = [
     (r"\bfont|text (size|bigger|smaller)|zoom", "Font Size"),
     (r"\bdistort|lines|green|pink|purple|colou?r", "Display Distortion"),
 ]
+ISSUE_WORDS = re.compile(
+    r"\b(not|no|won't|can't|cannot|doesn't|isn't|stopped|issue|problem|error|fail\w*|black|blank|dark|crack\w*|"
+    r"flicker\w*|flash\w*|stuck|frozen|freez\w*|lag\w*|delay\w*|slow|broken|distort\w*|unresponsive|"
+    r"don't|disconnect\w*|drop\w*|drain\w*|hot|swollen|missing|keeps|"
+    # apostrophe-less spellings people actually type, and damage words
+    r"wont|cant|doesnt|isnt|dont|didnt|wet|water|liquid|crash\w*|stopping|restarting|rebooting|damage\w*|"
+    r"overheat\w*|dead|glitch\w*|bug\w*|faulty|unable|wrong|instead|incorrect\w*|messed|misbehav\w*|weird)\b", re.I)
+# "How can I make the text bigger?" asks for a configuration, not a fix.
+HOW_TO = re.compile(r"^\s*(how (can|do|to|should) i?|how to|is there a way|i want to|i'd like to|can i|where (is|do))\b", re.I)
+
+
+@dataclass
+class Enriched:
+    raw: str
+    device: str | None
+    symptoms: list[str] = field(default_factory=list)
+    is_issue: bool = True
+    normalised: str = ""
+    keywords: list[str] = field(default_factory=list)

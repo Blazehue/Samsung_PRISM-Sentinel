@@ -51,3 +51,66 @@
       return false;
     }
   }
+
+  /* ───────────────────────── hero wave ───────────────────────── */
+  function startWave() {
+    const canvas = $("#wave"), hero = $(".hero"), foot = $(".hero-foot");
+    const ctx = canvas.getContext("2d");
+    // Small canvas + canvas-level blur: cheap soft edge. (A CSS blur on a
+    // full-screen canvas repaints every frame and janks.) Without ctx.filter
+    // (Safari), render smaller still and let upscaling soften it.
+    const CAN_BLUR = "filter" in ctx;
+    const SCALE = CAN_BLUR ? 0.25 : 0.1;
+    let w = 0, h = 0, base = 0, amp = 0, running = true, raf = 0;
+
+    const resize = () => {
+      w = canvas.width = Math.ceil(hero.clientWidth * SCALE);
+      h = canvas.height = Math.ceil(hero.clientHeight * SCALE);
+      // Keep the crest above the hero copy so white text always sits on the dark band.
+      const footTop = foot.offsetTop * SCALE;
+      amp = Math.min(h, w * 0.75);            // a tall, narrow hero would turn the swell into a spike
+      base = Math.min(h * 0.62, footTop - amp * 0.2);
+    };
+    const draw = (t) => {
+      ctx.clearRect(0, 0, w, h);
+      if (CAN_BLUR) ctx.filter = `blur(${Math.max(2, Math.round(w / 120))}px)`;
+      const grad = ctx.createLinearGradient(0, base - h * 0.22, 0, h);
+      grad.addColorStop(0, "#050505");
+      grad.addColorStop(0.45, "#141414");
+      grad.addColorStop(1, "#6b6b6b");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let x = 0; x <= w + 2; x += 1) {
+        const u = x / w;
+        const y = base
+          + amp * 0.12 * Math.sin(u * Math.PI * 2 * 0.95 + t * 0.00016)
+          + amp * 0.05 * Math.sin(u * Math.PI * 2 * 2.2 - t * 0.00023 + 1.4)
+          + amp * 0.02 * Math.sin(u * Math.PI * 2 * 4.1 + t * 0.0004);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fill();
+      // A soft lighter core inside the band, like the reference's grey interior.
+      const core = ctx.createRadialGradient(w * 0.3, h * 1.05, 0, w * 0.3, h * 1.05, h * 0.55);
+      core.addColorStop(0, "rgba(140,140,140,.55)");
+      core.addColorStop(1, "rgba(140,140,140,0)");
+      ctx.fillStyle = core;
+      ctx.fillRect(0, 0, w, h);
+      if (CAN_BLUR) ctx.filter = "none";
+    };
+    let lastT = 0;
+    const loop = (t) => {
+      if (t - lastT > 33) { draw(t); lastT = t; }          // ~30 fps is plenty for a slow swell
+      if (running && !REDUCED) raf = requestAnimationFrame(loop);
+    };
+    resize();
+    addEventListener("resize", () => { resize(); draw(performance.now()); });
+    new IntersectionObserver(([e]) => {
+      running = e.isIntersecting;
+      cancelAnimationFrame(raf);
+      if (running) raf = requestAnimationFrame(loop);
+    }).observe(hero);
+    draw(0);
+  }

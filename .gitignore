@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+# Hackathon handouts (brochures, DRM-protected guides, zips) stay local
+*.pdf
+*.docx
+*.pptx
+*.zip
+.DS_Store

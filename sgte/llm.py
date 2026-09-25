@@ -54,3 +54,21 @@ def _load_memo() -> dict:
 
 _memo: dict = _load_memo()
 _dirty = False
+
+
+@dataclass
+class RequestUsage:
+    calls: int = 0
+    memo_hits: int = 0
+    cost_usd: float = 0.0
+    models: set = field(default_factory=set)
+
+
+_request: contextvars.ContextVar[RequestUsage | None] = contextvars.ContextVar("sgte_llm_request", default=None)
+
+
+def begin_request() -> RequestUsage:
+    """Start per-request accounting (read back for the response's meta)."""
+    ru = RequestUsage()
+    _request.set(ru)
+    return ru

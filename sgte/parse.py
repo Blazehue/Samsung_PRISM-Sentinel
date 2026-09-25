@@ -81,3 +81,33 @@ def _first_word(s: str) -> str:
                 break
     m = re.match(r"[a-z-]+", s)
     return m.group(0) if m else ""
+
+
+def is_imperative(s: str) -> bool:
+    fw = _first_word(s)
+    if fw in VERBS:
+        return True
+    low = s.lower()
+    if low.startswith(("note:", "tip:", "important:")):
+        return False
+    if low.startswith(("do not ", "don't ", "never ")):        # safety instructions
+        return True
+    # A lead-in clause before a comma: "If X, swipe…", "Using two fingers, swipe…",
+    # "In this case, please contact…".
+    if "," in s and len(s.split(",", 1)[0].split()) <= 12:
+        if _first_word(s.split(",", 1)[1]) in VERBS:
+            return True
+    return low.startswith(("make sure", "be sure"))
+
+
+ANCHOR = re.compile(r"<a\b[^>]*>.*?</a>", re.I | re.S)          # link text is a reference, not a step
+MD_LINK = re.compile(r"(?<!!)\[([^\]]+)\]\([^)]*\)")            # [text](url) → text
+TAG = re.compile(r"</?[a-z][^>]*>", re.I)
+
+
+def clean_markup(text: str) -> str:
+    """HTML/markdown markup → plain text (link targets dropped)."""
+    text = ANCHOR.sub(" ", text or "")
+    text = MD_LINK.sub(r"\1", text)
+    text = re.sub(r"<br\s*/?>|</p>|</li>", "\n", text, flags=re.I)
+    return TAG.sub("", text).replace("&nbsp;", " ").replace("&amp;", "&")

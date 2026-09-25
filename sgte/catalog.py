@@ -53,3 +53,22 @@ BUTTONS = {"delete all", "delete", "reset", "ok", "restart", "confirm", "done", 
            "yes", "no", "cancel", "apply", "save", "disconnect", "remove", "erase", "next", "continue",
            "turn off", "power off", "reset settings", "remove device", "add device", "unpair", "pair", "forget",
            "install", "download and install", "update", "unrestricted", "uninstall", "force stop"}
+
+
+@dataclass
+class Entry:
+    id: str
+    deeplink: str
+    description: str
+    message: str
+    original_type: str | None
+    qna: str
+    validation: dict | None
+    toks: set
+
+
+@dataclass
+class Match:
+    entry: Entry
+    score: float
+    matched_terms: list[str]

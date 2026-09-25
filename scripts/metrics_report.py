@@ -137,3 +137,14 @@ def hybrid_bm25_dense(steps):
     mx = max((s for _, s in top), default=1) or 1
     best = max(top, key=lambda t: 0.6 * t[1] / mx + 0.4 * cosine(qv, _vecs[t[0]]), default=None)
     return CAT.entries[best[0]] if best and best[1] > 0 else None
+
+
+def pure_rules(steps):
+    """Variant B: exact on-screen label lookup only (no retrieval fallback)."""
+    for lab in (CAT._extend(t, steps) for t in CAT.targets(steps)):
+        ids = CAT.by_label.get(CAT._norm(lab))
+        if ids:
+            pol = CAT.polarity(steps)
+            cands = [CAT.entries[i] for i in ids]
+            return max(cands, key=lambda e: (e.message.startswith(pol), not e.message.startswith("Disable")))
+    return None

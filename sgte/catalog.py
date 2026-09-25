@@ -99,3 +99,33 @@ class Catalog:
                 self.by_label.setdefault(lab, []).append(i)
         self.uris = ({e.deeplink for e in self.entries} | {DUMMY}
                      | {e.validation["deeplink"] for e in self.entries if e.validation})
+
+    # ------------------------------------------------------------------ helpers
+    @classmethod
+    def desc_label(cls, e: "Entry") -> str:
+        """The page the description names: "Opens the Bluetooth settings page…" → "bluetooth"."""
+        for pat in DESC_LABEL:
+            m = pat.match(e.description)
+            if m:
+                return cls._norm(m.group(1))
+        return ""
+
+    @classmethod
+    def labels_of(cls, e: "Entry") -> set[str]:
+        labs = {cls._norm(VERB_PREFIX.sub("", e.message)), cls.desc_label(e)}
+        return {l for l in labs if l.strip()}
+
+    def _extend(self, label: str, steps: list[str]) -> str:
+        """A label the target regex cut short at "and"/"to"/"(" — "Touch" from
+        "tap Touch and hold to edit" — is extended to the longest continuation
+        that is exactly a catalogue label."""
+        for s in steps:
+            # every occurrence — in "Tap Tap to click" the first "Tap" is the verb
+            for k in (m.start() for m in re.finditer(re.escape(label), s)):
+                rest = re.split(r"[,.;:]", s[k:], maxsplit=1)[0]
+                ws = rest.split()
+                for n in range(len(ws), len(label.split()), -1):
+                    cand = " ".join(ws[:n])
+                    if self._norm(cand) in self.by_label:
+                        return cand
+        return label

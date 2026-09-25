@@ -114,3 +114,65 @@
     }).observe(hero);
     draw(0);
   }
+
+  /* ───────────────────────── reveals & counters ───────────────────────── */
+  function splitWords(root) {
+    let i = 0;
+    const walk = (node) => {
+      [...node.childNodes].forEach((n) => {
+        if (n.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          n.textContent.split(/(\s+)/).forEach((part) => {
+            if (!part) return;
+            if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+            const s = document.createElement("span");
+            s.className = "w"; s.style.setProperty("--i", i++); s.textContent = part;
+            frag.appendChild(s);
+          });
+          n.replaceWith(frag);
+        } else if (n.nodeType === 1 && n.tagName !== "BR") walk(n);
+      });
+    };
+    walk(root);
+  }
+
+  function setRoll(el, value) {
+    const str = String(value);
+    el.dataset.value = str;
+    el.innerHTML = "";
+    el.setAttribute("aria-label", str);
+    [...str].forEach((ch) => {
+      if (/\d/.test(ch)) {
+        const col = document.createElement("span");
+        col.className = "col"; col.setAttribute("aria-hidden", "true");
+        col.innerHTML = Array.from({ length: 10 }, (_, d) => `<span>${d}</span>`).join("");
+        col.dataset.d = ch;
+        el.appendChild(col);
+      } else {
+        const f = document.createElement("span");
+        f.className = "fixed"; f.textContent = ch; f.setAttribute("aria-hidden", "true");
+        el.appendChild(f);
+      }
+    });
+    if (el.classList.contains("rolled")) requestAnimationFrame(() => rollIn(el));
+  }
+  const rollIn = (el) => { el.classList.add("rolled"); $$(".col", el).forEach((c) => (c.style.transform = `translateY(-${c.dataset.d}em)`)); };
+
+  function initReveals() {
+    $$("[data-words]").forEach(splitWords);
+    $$(".roll").forEach((el) => setRoll(el, el.dataset.value));
+    if (REDUCED || !("IntersectionObserver" in window)) {
+      $$("[data-words], .reveal").forEach((el) => el.classList.add("in"));
+      $$(".roll").forEach(rollIn);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add("in");
+      $$(".roll", e.target).forEach(rollIn);
+      io.unobserve(e.target);
+    }), { threshold: 0.15, rootMargin: "0px 0px -8% 0px" });
+    $$("[data-words], .reveal").forEach((el) => io.observe(el));
+    // Stagger siblings in a grid so cards arrive one after another.
+    $$(".tile-grid, .stats, .api-grid").forEach((g) => [...g.children].forEach((c, i) => (c.style.transitionDelay = `${i * 80}ms`)));
+  }

@@ -52,3 +52,30 @@ class Client:
         t = time.perf_counter()
         r = self.c.post(self.base + path, json=body)
         return r, (time.perf_counter() - t) * 1000
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--url")
+    ap.add_argument("--json")
+    args = ap.parse_args()
+    cli = Client(args.url)
+    uris = get_catalog().uris
+    rows = json.loads(KIT.read_text())["responses"]
+    unseen = json.loads(UNSEEN.read_text())["cases"]
+    out: dict = {"gates": {}, "blocks": {}, "metrics": {}}
+
+    # G2 — health
+    h = cli.get("/health")
+    out["gates"]["G2_health"] = h.status_code == 200 and h.json() == {"status": "ok"}
+
+    # Canonical pass (first call per query may be a prewarmed hit; that's the product)
+    responses, lat = [], []
+    for r in rows:
+        resp, ms = cli.post("/v1/troubleshoot", {"query": r["original_query"], "siis_response": r["siis_response"]})
+        responses.append(resp.json() if resp.status_code == 200 else {})
+        lat.append(ms)
+    n = len(rows)
+    covered = sum(bool(x.get("contexts")) for x in responses)
+    valid = sum(not schema_errors(x) for x in responses)
+    leaks = sum(len(url_leaks(x)) for x in responses)

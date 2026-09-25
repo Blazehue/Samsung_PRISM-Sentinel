@@ -689,3 +689,24 @@
       ].map(([k, v]) => `<div class="sm"><span>${k}</span><b>${esc(v)}</b></div>`).join("");
     } catch {}
   }
+
+  /* ───────────────────────── API try-its ───────────────────────── */
+  $$("[data-try]").forEach((b) => b.addEventListener("click", async () => {
+    const out = b.nextElementSibling;
+    out.hidden = false;
+    out.textContent = "…";
+    try {
+      const r = b.dataset.try === "health" ? await call("/health")
+        : b.dataset.try === "metrics" ? await call("/v1/metrics")
+        : await call("/v1/variations", { query: "My Galaxy S22 screen went black after an update" });
+      out.textContent = `// ${fmtMs(r.rtt)}\n` + JSON.stringify(r.data, null, 2);
+    } catch (err) { out.textContent = String(err.message); }
+  }));
+
+  /* ───────────────────────── boot ───────────────────────── */
+  initReveals();
+  startWave();
+  ping();
+  loadCases();
+  setInterval(ping, 30000);
+})();

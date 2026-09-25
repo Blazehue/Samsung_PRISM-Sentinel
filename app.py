@@ -28,3 +28,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
+
+from sgte import llm
+from sgte.cache import Cache
+from sgte.catalog import DUMMY, get_catalog
+from sgte.engine import _units, split_interactions, step_group, troubleshoot
+from sgte.enrich import enrich
+from sgte.parse import parse_siis
+from sgte.variations import variations
+
+ROOT = Path(__file__).resolve().parent
+KIT = ROOT / "data" / "student_kit" / "siis_responses.json"
+UNSEEN = ROOT / "data" / "unseen_siis.json"
+WEB = ROOT / "web"
+log = logging.getLogger("sgte")
+cache = Cache()
+
+
+class SIIS(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    title: str = ""
+    content: str = ""

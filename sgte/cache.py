@@ -44,3 +44,21 @@ class Cache:
         self._lock = threading.Lock()
         self.stats = {"exact": 0, "paraphrase": 0, "miss": 0}
         self.latencies: dict[str, deque] = {k: deque(maxlen=5000) for k in ("hit", "miss")}
+
+    def lookup(self, query: str, siis: dict) -> tuple[dict | None, str]:
+        e = enrich(query)
+        key = siis_key(siis)
+        with self._lock:
+            b = self._buckets.get(key)
+            if b is not None:
+                self._buckets.move_to_end(key)
+                if e.normalised in b.responses:
+                    self.stats["exact"] += 1
+                    return copy.deepcopy(b.responses[e.normalised]), "exact"
+                kw = set(e.keywords)
+                if kw & (b.siis_toks | b.query_toks):
+                    self.stats["paraphrase"] += 1
+                    plan = copy.deepcopy(b.plan)
+                    return retarget(plan, query, siis), "paraphrase"
+            self.stats["miss"] += 1
+            return None, "miss"

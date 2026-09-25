@@ -139,3 +139,32 @@ def v1_troubleshoot(req: TroubleshootRequest) -> JSONResponse:
     body = {**resp, "meta": meta}
     return JSONResponse(body, headers={"X-Cache": kind, "X-Cache-Hit": str(hit).lower(),
                                        "X-Latency-Ms": f"{ms:.2f}", "X-Cost-Usd": str(meta["cost_usd"])})
+
+
+@app.post("/v1/variations")
+def v1_variations(req: VariationsRequest) -> dict:
+    return {"query": req.query, "query_variations": variations(req.query)}
+
+
+@app.get("/v1/metrics")
+def v1_metrics() -> dict[str, Any]:
+    return {
+        "cache": cache.summary(),
+        "llm": {"enabled": llm.enabled(), "model": llm.MODEL, "fallback_models": llm.FALLBACK_MODELS,
+                "stages": sorted(llm.STAGES), "memo_entries": len(llm._memo), **llm.usage},
+        # Gemini spend so far / requests served (0 on the free tier or when every answer came from cache or memo).
+        "cost_per_query_usd": round(llm.usage["cost_usd"] / max(1, cache.summary()["requests"]), 6),
+    }
+
+
+@app.get("/v1/cases")
+def v1_cases() -> dict:
+    cases = []
+    if KIT.exists():
+        cases += [{"id": r["id"], "source": "kit", "query": r["original_query"], "siis_response": r["siis_response"]}
+                  for r in json.loads(KIT.read_text())["responses"]]
+    if UNSEEN.exists():
+        cases += [{"id": f"unseen_{i + 1}", "source": "unseen", **c}
+                  for i, c in enumerate(json.loads(UNSEEN.read_text())["cases"])]
+    para = ROOT / "data" / "paraphrases.json"
+    return {"cases": cases, "paraphrases": json.loads(para.read_text())["paraphrases"] if para.exists() else {}}

@@ -248,3 +248,16 @@ def describe(actions: list[dict], deadline: float | None = None) -> list[str] | 
               "Wi-Fi connection\", \"It will get help from your provider\"), not that it fixes the problem. Return JSON "
               "{\"descriptions\": [...]} in the same order.\n\n" + json.dumps(actions, ensure_ascii=False))
     return ask("describe", prompt, {"v": 2, "actions": actions}, ok, deadline=deadline)
+
+
+def variations(query: str, n: int = 10) -> list[str] | None:
+    def ok(items):
+        if not isinstance(items, list):
+            return None
+        out = [_clean(s) for s in items if isinstance(s, str) and 3 <= len(s.split()) <= 40]
+        out = [s for s in out if not URLISH.search(s)]
+        return out or None
+    prompt = (f"Rewrite this Samsung Galaxy device complaint as {n} diverse paraphrases a real user might type. Cover "
+              "these registers: formal, casual, keyword-only, frustrated, and one with realistic typos. Keep the same "
+              "device and problem, no URLs. Return a JSON array of strings only.\n\nComplaint: " + json.dumps(query))
+    return ask("variations", prompt, {"q": query, "n": n}, ok, temperature=0.7)

@@ -109,3 +109,24 @@ def _call(model: str, prompt: str, temperature: float, timeout: float):
         return text, meta.get("promptTokenCount", 0), meta.get("candidatesTokenCount", 0), 200
     except Exception:
         return None, 0, 0, 200
+
+
+def ask(stage: str, prompt: str, payload, validate, temperature: float = 0.0, deadline: float | None = None,
+        live: bool = True):
+    """Memo → live call (model chain, time-boxed) → validate. None means: use
+    the deterministic path. live=False only reuses memoised results (cache hits
+    must never wait on a model)."""
+    global _dirty
+    if stage not in STAGES:
+        return None
+    ru = _request.get()
+    key = _memo_key(stage, payload)
+    if key in _memo:
+        with _lock:
+            usage["memo_hits"] += 1
+        if ru:
+            ru.memo_hits += 1
+            ru.models.add(MODEL)
+        return _memo[key]
+    if not live or not enabled(stage):
+        return None

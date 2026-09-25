@@ -180,3 +180,28 @@ def latency_and_cache():
     return {"exact": exact, "para": para_hand + para_gen, "cold": cold,
             "hit_hand": hits_hand / len(para_hand), "n_hand": len(para_hand),
             "hit_gen": hits_gen / len(para_gen), "n_gen": len(para_gen)}
+
+
+def gemini_cold(n: int = 30):
+    """Cold requests with live Gemini refinement (memo bypassed): latency, calls, tokens."""
+    if not llm.enabled():
+        return None
+    saved = dict(llm._memo)
+    llm._memo.clear()
+    lat, calls, fails = [], 0, 0
+    tin0, tout0, fail0 = llm.usage["input_tokens"], llm.usage["output_tokens"], llm.usage["failures"]
+    cases = [(r["original_query"], r["siis_response"]) for r in KIT] + \
+            [(u["query"], u["siis_response"]) for u in UNSEEN if u["siis_response"]["title"] not in NO_VIABLE]
+    try:
+        for i, (q, s) in enumerate(cases[:n]):
+            ru = llm.begin_request()
+            salted = {"title": s["title"], "content": s["content"] + f"\n{i}{time.time_ns()}"}
+            _, ms = timed(troubleshoot, q, salted)
+            lat.append(ms)
+            calls += ru.calls
+    finally:
+        llm._memo.clear()
+        llm._memo.update(saved)
+    tin, tout = llm.usage["input_tokens"] - tin0, llm.usage["output_tokens"] - tout0
+    return {"lat": lat, "n": len(lat), "calls": calls, "failures": llm.usage["failures"] - fail0,
+            "tin": tin, "tout": tout, "cost": (tin * llm.PRICE_IN + tout * llm.PRICE_OUT) / 1e6}

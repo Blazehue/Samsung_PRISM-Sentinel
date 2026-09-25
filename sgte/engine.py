@@ -413,3 +413,14 @@ def _refine_links(groups: list[dict], deadline: float) -> None:
         g["actionableDeeplink"] = {"deeplink": e.deeplink, "description": e.description,
                                    "message": e.message, "originalType": e.original_type}
         g["validationDeeplink"] = _validation(e.validation)
+
+
+def _refine_descriptions(items: list[dict], deadline: float) -> None:
+    todo = [a for a in items if not a.get("_goal_desc")]
+    if not todo:
+        return
+    got = llm.describe([{"action": a["actionName"], "steps": [s for g in a["stepGroups"] for s in g["steps"]][:4]}
+                        for a in todo], deadline=deadline)
+    if got:
+        for a, d in zip(todo, got):
+            a["description"] = _brand_case(d)

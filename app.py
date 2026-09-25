@@ -168,3 +168,33 @@ def v1_cases() -> dict:
                   for i, c in enumerate(json.loads(UNSEEN.read_text())["cases"])]
     para = ROOT / "data" / "paraphrases.json"
     return {"cases": cases, "paraphrases": json.loads(para.read_text())["paraphrases"] if para.exists() else {}}
+
+
+@app.post("/v1/inspect")
+def v1_inspect(req: TroubleshootRequest) -> dict:
+    """What each pipeline stage saw — for the simulator's pipeline view. Uses the
+    engine's own units, step splitting and link resolver, so it cannot drift."""
+    siis, query = req.siis(), req.query or ""
+    e = enrich(query)
+    cat = get_catalog()
+    title, sections = parse_siis(siis)
+    out = []
+    for sec in sections:
+        for name, groups in _units(sec):
+            gs = []
+            for g in groups:
+                steps = [p for st in g.steps for p in split_interactions(st)]
+                sg = step_group(name, steps)
+                dl = sg["actionableDeeplink"]
+                m = cat.match(name, steps) if dl and dl["deeplink"] != DUMMY else None
+                gs.append({"label": g.label, "steps": steps, "targets": cat.targets(steps),
+                           "link": None if not dl else (
+                               {"message": dl["message"], "matched": m.matched_terms if m else [], "id": m.entry.id if m else dl["deeplink"]}
+                               if dl["deeplink"] != DUMMY else {"message": "dummy_positive", "screen": cat.primary_screen(steps), "id": DUMMY})})
+            out.append({"title": name, "groups": gs})
+    plan = troubleshoot(query, siis)
+    return {"enriched": {"query": e.raw, "device": e.device, "symptoms": e.symptoms, "is_issue": e.is_issue,
+                         "keywords": e.keywords[:16]},
+            "siis_title": title, "sections": out, "fallback": plan.get("fallback"),
+            "order": [{"actionName": a["actionName"], "category": a["category"]}
+                      for g in plan.get("contexts", []) for a in g["actions"]]}

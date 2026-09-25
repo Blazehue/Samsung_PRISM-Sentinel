@@ -194,3 +194,33 @@ The point totals the script prints are our own estimate of the rubric, used to
 catch regressions. They are not the official score. The full Appendix C
 report, with step accuracy (2.91/3), deeplink relevance (2.00/2), latency for
 each path at N ≥ 30, and the ablation, is in [`metrics.md`](metrics.md).
+
+### Every kit dataset through the engine
+
+| Dataset (Theme02_Input_Kit.zip) | Runs | Result |
+|---|---|---|
+| `siis_responses.json`, with the `original_query` and `input.txt` wordings | 40 | 40/40 schema-valid, rule-clean, grounded (both wordings give identical answers) |
+| Every query × every article (mismatched pairs, as a robustness test) | 400 | 400/400 valid and grounded |
+| `deeplinks.json`: each entry written as a Settings step that opens it, turns it on/off, or sets its value | 572 | **572/572 correct**: 561 link that exact entry, and 11 a true duplicate (same page, same action). The other 5 of the 578 are read-only monitors ("Retrieves the current … level") that validation reads, so no step targets them |
+| `sample_output.json` | 1 | Our answer to its query is rule-clean. The sample's own descriptions are 9 and 12 words, against the 5–7 rule |
+
+## API
+
+| Method | Path | Body → Response |
+|---|---|---|
+| GET | `/health` | → `{"status":"ok"}` once the cache is pre-warmed and the catalogue indexed |
+| POST | `/v1/troubleshoot` | `{query, siis_response:{title, content} \| "raw text" \| omitted}` → `ContextDeeplinkResponse` + `meta` |
+| POST | `/v1/variations` | `{query}` → `{query, query_variations[8–10]}` |
+| GET | `/v1/metrics` | cache hit rate, hit/miss latency p50/p95, LLM usage, cost per query |
+| GET | `/v1/cases` | kit + unseen cases and hand-written paraphrases (simulator data) |
+| POST | `/v1/inspect` | same body as troubleshoot → enrichment, sections, labels, deeplink decisions, final order |
+| GET | `/` | the simulator site (`web/`) |
+
+The API has no auth, as the judging harness requires. It never returns a 500:
+- An empty plan says why: `"fallback": "no_match"` (the article has no
+  instructions) or `"no_siis_context"` (no article, and no pre-warmed scenario
+  matched).
+- A bare-string SIIS is treated as the article body.
+- HTML and markdown markup is stripped.
+- Sentences that point at a URL are dropped whole.
+- `meta` and `fallback` are extra keys, which the kit's pydantic schema ignores.

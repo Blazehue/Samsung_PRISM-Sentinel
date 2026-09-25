@@ -473,3 +473,31 @@ def troubleshoot(query: str, siis: dict) -> dict:
                 if whole:
                     item["_goal_desc"] = True     # re-aimed per query by retarget(); not LLM-described
                 actions.append((rank, len(actions), item))
+
+    if not actions:
+        return dict(NO_MATCH)
+    # Guide §1/§4.1/§6: least disruptive first — settings toggles, then manual
+    # checks, then escalations, critical operations last. Stable within a rank.
+    ordered = [a for _, _, a in sorted(actions, key=lambda t: (t[0], t[1]))][:MAX_ACTIONS]
+
+    # Gemini refinements (placeholder links, descriptions) run in parallel under
+    # one budget. Linked-ness never changes, so categories and order hold.
+    deadline = started + LLM_BUDGET_S
+    jobs = []
+    if llm.available("rerank"):
+        jobs.append((_refine_links, [g for a in ordered for g in a["stepGroups"]]))
+    if llm.available("describe"):
+        jobs.append((_refine_descriptions, ordered))
+    if jobs:
+        with ThreadPoolExecutor(max_workers=len(jobs)) as ex:
+            futs = [ex.submit(contextvars.copy_context().run, fn, arg, deadline) for fn, arg in jobs]
+            for f in futs:
+                try:
+                    f.result()
+                except Exception:
+                    pass                          # a failed refinement leaves the deterministic answer
+    for a in ordered:
+        a.pop("_goal_desc", None)
+
+    goal = {"goal": h["goal"], "title": h["title"], "actions": ordered, "score": h["score"]}
+    return ContextDeeplinkResponse.model_validate({"contexts": [goal]}).model_dump(mode="json")

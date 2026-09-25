@@ -72,3 +72,30 @@ class Match:
     entry: Entry
     score: float
     matched_terms: list[str]
+
+
+class Catalog:
+    def __init__(self, path: Path = DATA):
+        raw = json.loads(Path(path).read_text())["deeplinks"]
+        self.entries: list[Entry] = []
+        docs = []
+        for e in raw:
+            if e["deeplink"] == DUMMY:
+                continue
+            text = f"{e.get('message','')} {e.get('message','')} {e.get('description','')} {e.get('qna_description','')}"
+            toks = tokens(text)
+            self.entries.append(Entry(
+                id=e["id"], deeplink=e["deeplink"], description=e.get("description") or "",
+                message=e.get("message") or "", original_type=e.get("originalType"),
+                qna=e.get("qna_description") or "", validation=e.get("validation"), toks=set(toks),
+            ))
+            docs.append(toks)
+        self.bm25 = BM25(docs)
+        # Exact on-screen label → entries. "View Bluetooth" and the description's
+        # "Opens the Bluetooth settings page…" both give the label "bluetooth".
+        self.by_label: dict[str, list[int]] = {}
+        for i, e in enumerate(self.entries):
+            for lab in self.labels_of(e):
+                self.by_label.setdefault(lab, []).append(i)
+        self.uris = ({e.deeplink for e in self.entries} | {DUMMY}
+                     | {e.validation["deeplink"] for e in self.entries if e.validation})

@@ -88,3 +88,32 @@ def step_accuracy(pairs):
         cats = [rank[a["category"]] for g in out["contexts"] for a in g["actions"]]
         order.append(1.0 if cats == sorted(cats) else 0.0)
     return statistics.mean(comp), statistics.mean(corr), statistics.mean(order)
+
+
+def catalogue_sweep(matcher):
+    """Deeplink relevance 0–2 over every catalogue entry written as a Settings
+    step naming its screen: 2 = that entry (or one with the identical on-screen
+    message), 1 = same setting but other polarity, or a placeholder naming the
+    screen, 0 = a different setting or nothing."""
+    scores, lat = [], []
+    for e in CAT.entries:
+        m = re.match(r"^Opens the (.+?) settings? (?:page )?in ", e.description) or re.match(r"^(?:Enables|Disables) (.+?) via ", e.description)
+        lab = m.group(1) if m else re.sub(r"^(View|Enable|Disable|Adjust|Check|Open|Set)\s+", "", e.message)
+        lab = lab[0].upper() + lab[1:]
+        if e.description.startswith("Retrieves"):
+            continue                     # read-only monitor: queried by validation, not opened by a step
+        pol = "on" if e.message.startswith("Enable") else "off" if e.message.startswith("Disable") else None
+        value = e.message.startswith(("Adjust", "Increase", "Set"))
+        step = f"Open Settings, tap {lab}" + (f", and then tap the switch to turn it {pol}." if pol else
+                                              ", and then drag the slider to set it." if value else ".")
+        got, ms = timed(matcher, [step])
+        lat.append(ms)
+        if got is None:
+            scores.append(0)
+        elif got.deeplink == e.deeplink or (got.message == e.message and CAT.desc_label(got) == CAT.desc_label(e)):
+            scores.append(2)                        # the entry itself, or a true duplicate of the same page
+        elif lab.lower() in (got.message + " " + got.description).lower():
+            scores.append(1)
+        else:
+            scores.append(0)
+    return statistics.mean(scores), pct(lat, 95), sum(s == 2 for s in scores) / len(scores), len(scores)

@@ -568,3 +568,124 @@
     tick(); setInterval(tick, 30000);
     return { load, jumpToAction };
   })();
+
+  /* ───────────────────────── benchmark ───────────────────────── */
+  const STOP = new Set("a an the and or but if to of in on at by for with from is are was be it my me i you your this that can not no do does so".split(" "));
+  const toks = (s) => new Set(String(s).toLowerCase().match(/[a-z0-9]+/g)?.filter((w) => !STOP.has(w)) || []);
+  const jac = (a, b) => { const u = new Set([...a, ...b]); let n = 0; a.forEach((x) => b.has(x) && n++); return u.size ? n / u.size : 0; };
+
+  function gate(id, result, ok) {
+    const tr = $(`#gates tr[data-g="${id}"]`);
+    tr.children[1].textContent = result;
+    tr.children[3].innerHTML = `<span class="pill ${ok === null ? "run" : ok ? "ok" : "bad"}">${ok === null ? "running" : ok ? "pass" : "fail"}</span>`;
+  }
+
+  $("#benchBtn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    if (!state.cases.length) await loadCases();
+    const kit = state.cases.filter((c) => c.source === "kit"), unseen = state.cases.filter((c) => c.source === "unseen");
+    const paras = Object.entries(state.paraphrases).flatMap(([id, qs]) => { const c = kit.find((k) => k.id === id); return c ? qs.map((q) => [q, c]) : []; });
+    const total = 1 + kit.length * 3 + paras.length + unseen.length + kit.length;
+    let done = 0;
+    const step = () => ($("#benchBar").style.width = `${(++done / total) * 100}%`);
+    btn.disabled = true;
+    $$("#gates tbody tr").forEach((tr) => { tr.children[1].textContent = "—"; tr.children[3].innerHTML = `<span class="pill">queued</span>`; });
+    $("#benchBar").style.width = "0";
+    try {
+      gate("G2", "…", null);
+      let health = false;
+      try { health = (await call("/health")).data.status === "ok"; } catch {}
+      step(); gate("G2", health ? '{"status":"ok"}' : "unreachable", health);
+
+      ["G3", "G4", "G5", "A1", "A2"].forEach((g) => gate(g, "…", null));
+      const canon = [];
+      for (const c of kit) { canon.push(await call("/v1/troubleshoot", { query: c.query, siis_response: c.siis_response })); step(); }
+      const rs = canon.map((x) => x.data), n = rs.length;
+      const covered = rs.filter((r) => r.contexts && r.contexts.length).length;
+      const valid = rs.filter(schemaOk).length;
+      const leaks = rs.reduce((k, r) => k + urlLeaks(r).length, 0);
+      const clean = rs.filter((r) => checks(r).every(([, v]) => v)).length;
+      const links = rs.flatMap((r) => r.contexts.flatMap((g) => g.actions.flatMap((a) => a.stepGroups.flatMap((sg) => [sg.actionableDeeplink, sg.validationDeeplink])))).filter(Boolean);
+      const autos = rs.flatMap((r) => r.contexts.flatMap((g) => g.actions)).filter((a) => a.category === "auto");
+      const autoOk = autos.filter((a) => a.stepGroups.every((sg) => sg.actionableDeeplink)).length;
+      const linkOk = links.filter((l) => l.deeplink.startsWith("bixby://")).length;
+      gate("G3", `${covered}/${n} (${pct(covered, n)}%)`, covered / n >= 0.95);
+      gate("G4", `${valid}/${n} (${pct(valid, n)}%)`, valid / n >= 0.9);
+      gate("G5", String(leaks), leaks === 0);
+      gate("A1", `${clean}/${n} clean`, clean === n);
+      gate("A2", `${pct(linkOk, links.length)}% · ${autoOk}/${autos.length}`, linkOk === links.length && autoOk === autos.length);
+
+      gate("A3r", "…", null);
+      const rep = [];
+      for (let k = 0; k < 2; k++) for (const c of kit) { rep.push(await call("/v1/troubleshoot", { query: c.query, siis_response: c.siis_response })); step(); }
+      const repRtt = p95(rep.map((x) => x.rtt)), repSrv = p95(rep.map((x) => x.server)), repHit = rep.filter((x) => x.cache && x.cache !== "miss").length / rep.length;
+      gate("A3r", `${fmtMs(repRtt)} rtt · ${fmtMs(repSrv)} server · ${Math.round(repHit * 100)}%`, repRtt <= 300 && repHit >= 0.9);
+
+      gate("A3p", "…", null);
+      let paraHits = 0;
+      for (const [q, c] of paras) { const x = await call("/v1/troubleshoot", { query: q, siis_response: c.siis_response }); paraHits += x.cache && x.cache !== "miss" ? 1 : 0; step(); }
+      const paraRate = paras.length ? paraHits / paras.length : 0;
+      gate("A3p", `${paraHits}/${paras.length} (${Math.round(paraRate * 100)}%)`, paraRate >= 0.8);
+
+      gate("A3c", "…", null); gate("A4", "…", null);
+      const cold = [];
+      let unseenClean = 0, gOk = 0, gAll = 0;
+      const NO_VIABLE = new Set(["What are Bixby Routines?"]);   // explainer only → no_match is the right answer
+      for (const c of unseen) {
+        if (NO_VIABLE.has(c.siis_response.title)) {
+          const x = await call("/v1/troubleshoot", c);
+          if (!x.data.contexts.length && x.data.fallback === "no_match") unseenClean++;
+          cold.push(x.rtt); step();
+          continue;
+        }
+        const salted = { title: c.siis_response.title, content: `${c.siis_response.content}\n${Date.now()}${Math.random().toString().slice(2, 8)}` };
+        const x = await call("/v1/troubleshoot", { query: c.query, siis_response: salted });
+        cold.push(x.rtt);
+        if (x.data.contexts.length && checks(x.data).every(([, v]) => v)) unseenClean++;
+        const [a, b] = grounding(x.data, c.siis_response); gOk += a; gAll += b;
+        step();
+      }
+      const coldP = p95(cold);
+      gate("A3c", fmtMs(coldP), coldP <= 8000);
+      gate("A4", `${unseenClean}/${unseen.length} · ${gOk}/${gAll} grounded`, unseenClean === unseen.length && gOk === gAll);
+
+      gate("A5", "…", null);
+      let inRange = 0; const sims = [];
+      for (const c of kit) {
+        const v = (await call("/v1/variations", { query: c.query })).data.query_variations || [];
+        if (v.length >= 8 && v.length <= 10) inRange++;
+        const ts = v.map(toks);
+        ts.forEach((a, x) => ts.slice(x + 1).forEach((b) => sims.push(jac(a, b))));
+        step();
+      }
+      const meanSim = sims.length ? sims.reduce((a, b) => a + b, 0) / sims.length : 1;
+      gate("A5", `${inRange}/${kit.length} · J ${meanSim.toFixed(2)}`, inRange === kit.length && meanSim < 0.5);
+
+      // Headline stats follow the run.
+      setRoll($("#rHit"), repSrv < 10 ? repSrv.toFixed(1) : Math.round(repSrv));
+      $("#fHit").textContent = `Server-side, this run. Round trip from your browser: ${fmtMs(repRtt)}. Budget: 300 ms.`;
+      setRoll($("#rPara"), Math.round(paraRate * 100));
+      const kitG = kit.reduce((acc, c, k) => { const [a, b] = grounding(rs[k], c.siis_response); return [acc[0] + a, acc[1] + b]; }, [0, 0]);
+      const allOk = kitG[0] + gOk, allN = kitG[1] + gAll;
+      setRoll($("#benchmark .roll"), allN ? Math.floor((allOk / allN) * 100) : 0);
+      $("#fGround").textContent = `${allOk}/${allN} steps found verbatim in their article this run (kit ${kitG[0]}/${kitG[1]}, unseen ${gOk}/${gAll}).`;
+      $("#benchNote").textContent = `Finished ${new Date().toLocaleTimeString()} · ${done} requests to ${API_LABEL}`;
+      await renderServerMetrics();
+    } catch (err) {
+      $("#benchNote").textContent = `Stopped: ${err.message}`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function renderServerMetrics() {
+    try {
+      const m = (await call("/v1/metrics")).data, c = m.cache;
+      $("#serverMetrics").innerHTML = [
+        ["Hit rate", c.hit_rate == null ? "—" : `${Math.round(c.hit_rate * 100)}%`],
+        ["Requests", c.requests],
+        ["Hit p95", fmtMs(c.hit_ms.p95)],
+        ["Miss p95", fmtMs(c.miss_ms.p95)],
+      ].map(([k, v]) => `<div class="sm"><span>${k}</span><b>${esc(v)}</b></div>`).join("");
+    } catch {}
+  }

@@ -53,3 +53,28 @@ def tokens(text: str, keep_stop: bool = False) -> list[str]:
 
 def jaccard(a: set, b: set) -> float:
     return len(a & b) / len(a | b) if a and b else 0.0
+
+
+class BM25:
+    """Okapi BM25 over a list of documents (each a token list)."""
+
+    def __init__(self, docs: list[list[str]], k1: float = 1.4, b: float = 0.7):
+        self.docs, self.k1, self.b = docs, k1, b
+        self.N = len(docs)
+        self.avgdl = sum(len(d) for d in docs) / max(1, self.N)
+        df = Counter(t for d in docs for t in set(d))
+        self.idf = {t: math.log(1 + (self.N - n + 0.5) / (n + 0.5)) for t, n in df.items()}
+        self.tf = [Counter(d) for d in docs]
+
+    def score(self, query: list[str], i: int) -> float:
+        tf, dl, s = self.tf[i], len(self.docs[i]), 0.0
+        for t in set(query):
+            f = tf.get(t)
+            if f:
+                s += self.idf.get(t, 0.0) * f * (self.k1 + 1) / (f + self.k1 * (1 - self.b + self.b * dl / self.avgdl))
+        return s
+
+    def top(self, query: list[str], k: int = 5) -> list[tuple[int, float]]:
+        scored = [(i, self.score(query, i)) for i in range(self.N)]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:k]

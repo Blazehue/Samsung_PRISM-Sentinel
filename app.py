@@ -49,3 +49,20 @@ class SIIS(BaseModel):
     model_config = ConfigDict(extra="allow")
     title: str = ""
     content: str = ""
+
+
+class TroubleshootRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    query: str | None = ""
+    # Tolerate null or a bare string (treated as the article body).
+    siis_response: SIIS | str | None = None
+
+    def siis(self) -> dict:
+        s = self.siis_response
+        if isinstance(s, str):
+            return {"title": "", "content": s}
+        return (s or SIIS()).model_dump()
+
+
+class VariationsRequest(BaseModel):
+    query: str

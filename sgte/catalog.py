@@ -146,3 +146,36 @@ class Catalog:
         if polarity == "Adjust":
             return e.message.startswith(("Adjust", "Increase", "Set"))
         return e.message.startswith(polarity)
+
+    @staticmethod
+    def targets(steps: list[str], known: dict | None = None, extend=None) -> list[str]:
+        """On-screen labels named by the steps, most specific (last) first.
+        A label that looks like a button ("Allow…", "Unpair") is skipped unless
+        it is, in full, a setting the catalogue names (`known`, after `extend`):
+        "Allow on your TV" is a prompt, "Allow phone to be found remotely" a setting."""
+        found: list[str] = []
+        # An optional extra ("Optionally toggle on Gesture hint…") doesn't decide
+        # which screen the group is about — unless it's the only thing there.
+        core = [s for s in steps if not s.lower().startswith(("optionally", "(optional)"))] or steps
+        for s in core:
+            for m in SETTINGS_PATH.finditer(s):
+                # "Settings > Display > Screen timeout and choose a longer time":
+                # the label ends where the sentence carries on.
+                parts = [re.split(r"\s+(?:and|then|to|or|if|when)\s+", p.strip())[0] for p in m.group(1).split(">")]
+                found += [p for p in parts if p]
+            for m in list(TARGET.finditer(s)) + list(SWITCH_NEXT.finditer(s)):
+                label = re.sub(r"\s+again$", "", m.group(1).strip(" '\""), flags=re.I)
+                if extend:
+                    label = extend(label, [s])
+                low = label.lower()
+                buttonish = low in BUTTONS or low.split()[0] in ("allow", "unpair", "forget")
+                if buttonish and known is not None and Catalog._norm(label) in known:
+                    buttonish = False
+                if low not in ("settings", "it", "the") and not buttonish:
+                    found.append(label)
+        seen, out = set(), []
+        for t in reversed(found):
+            if t.lower() not in seen:
+                seen.add(t.lower())
+                out.append(t)
+        return out

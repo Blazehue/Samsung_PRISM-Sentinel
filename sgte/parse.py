@@ -31,3 +31,16 @@ LEADERS = ("alternatively,", "then,", "then", "next,", "next", "first,", "first"
 SKIP_PATTERNS = re.compile(
     r"(provided links?|the link(s)? (below|above)|click here|learn more|see (the )?(article|guide)|as shown (below|above)"
     r"|following image|image below|(?:see|in|as shown in) the screenshot|screenshot (?:below|above)|follow (these|the following|the steps below|the steps)\b|^\s*(note|tip|important)\s*:)", re.I)
+
+ADVICE = re.compile(r"\b(recommend(ed)?|should|make sure|ensure|try|contact|visit|check|consider|need to|must)\b", re.I)
+HEADER = re.compile(r"^\s*(#{1,4})\s+(.*\S)\s*$")
+# "Step 2: Forget the network" on its own line is a heading, not a step.
+STEP_HEADER = re.compile(r"^\s*step\s*\d+\s*[:.\-]\s*([^.!?]{3,60})\s*$", re.I)
+GROUP_LABEL = re.compile(r"^(to|for|if you want to|when you want to)\b.*:\s*$", re.I)
+STEP_PREFIX = re.compile(r"^\s*(?:[-*•]\s+|\d+[.)]\s+|step\s*\d+\s*[:.]\s*)", re.I)
+
+
+@dataclass
+class Group:
+    label: str
+    steps: list[str] = field(default_factory=list)

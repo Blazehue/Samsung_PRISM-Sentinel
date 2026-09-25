@@ -193,3 +193,49 @@
     </article>
   </div>
 </section>
+
+<!-- ───────────────────────── Benchmark ───────────────────────── -->
+<section class="section rounded-top" id="benchmark">
+  <div class="wrap">
+    <p class="eyebrow"><span>//</span> Benchmark</p>
+    <h2 class="h2 center" data-words>Measured against<br>every gate</h2>
+    <p class="aside">Runs the official thresholds from your browser against the live API.</p>
+  </div>
+  <div class="wrap stats">
+    <article class="stat reveal"><div class="big"><span class="roll" data-value="100">100</span><sup>%</sup></div><p class="stat-k">Step grounding</p><p class="stat-foot" id="fGround">Every step appears verbatim in the SIIS text.</p></article>
+    <article class="stat reveal"><div class="big"><span class="roll" data-value="0.8" id="rHit">0.8</span><sup>ms</sup></div><p class="stat-k">Cache hit, p95</p><p class="stat-foot" id="fHit">Budget: 300 ms.</p></article>
+    <article class="stat reveal"><div class="big"><span class="roll" data-value="100" id="rPara">100</span><sup>%</sup></div><p class="stat-k">Paraphrase hits</p><p class="stat-foot" id="fPara">Hand-written rewordings, never pre-warmed. Needs 80%.</p></article>
+    <article class="stat reveal"><div class="big"><sup class="pre">$</sup><span class="roll" data-value="0.00">0.00</span></div><p class="stat-k">Cost per query</p><p class="stat-foot">Gemini runs only on cache misses (free tier), and its results are cached. Hits never call it.</p></article>
+  </div>
+
+  <div class="wrap">
+    <div class="card bench">
+      <div class="bench-head">
+        <div>
+          <span class="badge dark">Live</span>
+          <h3 class="h3">Gate run</h3>
+          <p class="muted small" id="benchNote">20 kit cases · 16 paraphrases · 14 unseen formats · variations</p>
+        </div>
+        <button class="btn btn-dark" id="benchBtn">Run benchmark <span class="arr">→</span></button>
+      </div>
+      <div class="progress" aria-hidden="true"><i id="benchBar"></i></div>
+      <table class="gates" id="gates">
+        <thead><tr><th>Check</th><th>Result</th><th>Threshold</th><th></th></tr></thead>
+        <tbody>
+          <tr data-g="G2"><td>G2 · Health</td><td>—</td><td><code>{"status":"ok"}</code></td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="G3"><td>G3 · Coverage</td><td>—</td><td>≥ 95%</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="G4"><td>G4 · Schema-valid</td><td>—</td><td>≥ 90%</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="G5"><td>G5 · URL leaks</td><td>—</td><td>0</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A1"><td>A1 · Format rules</td><td>—</td><td>all clean</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A2"><td>A2 · Deeplinks valid / auto linked</td><td>—</td><td>100%</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A3r"><td>A3 · Repeat p95 / hit rate</td><td>—</td><td>≤ 300 ms · ≥ 90%</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A3p"><td>A3 · Paraphrase hit rate</td><td>—</td><td>≥ 80%</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A3c"><td>A3 · Cold p95</td><td>—</td><td>≤ 8 s</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A4"><td>A4 · Unseen formats clean / grounded</td><td>—</td><td>all</td><td><span class="pill">pending</span></td></tr>
+          <tr data-g="A5"><td>A5 · 8–10 varied paraphrases</td><td>—</td><td>100% · Jaccard &lt; 0.5</td><td><span class="pill">pending</span></td></tr>
+        </tbody>
+      </table>
+      <div class="server-metrics" id="serverMetrics"></div>
+    </div>
+  </div>
+</section>

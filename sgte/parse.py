@@ -44,3 +44,26 @@ STEP_PREFIX = re.compile(r"^\s*(?:[-*•]\s+|\d+[.)]\s+|step\s*\d+\s*[:.]\s*)", 
 class Group:
     label: str
     steps: list[str] = field(default_factory=list)
+
+
+@dataclass
+class Section:
+    title: str
+    groups: list[Group] = field(default_factory=list)
+    text: str = ""
+
+    @property
+    def steps(self) -> list[str]:
+        return [s for g in self.groups for s in g.steps]
+
+
+def clean_header(h: str) -> str:
+    h = re.sub(r"^(step\s*\d+\s*[:.\-]\s*|\d+\s*[.)]\s*)", "", h.strip(), flags=re.I)
+    return h.strip(" :#*").strip()
+
+
+def _sentences(line: str) -> list[str]:
+    # Also split sentences glued without a space: "…pop-up view.Once you've…".
+    line = re.sub(r"(?<=[a-z)])\.(?=[A-Z][a-z])", ". ", line.strip())
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z\"'])", line)
+    return [p.strip() for p in parts if p.strip()]

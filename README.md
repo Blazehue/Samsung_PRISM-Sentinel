@@ -13,6 +13,12 @@ POST /v1/troubleshoot
 → ContextDeeplinkResponse (validated against the kit's schema.py) + meta {latency_ms, cache_hit, model, cost_usd}
 ```
 
+## Demo video
+
+Five-minute walkthrough of the live API and simulator: https://youtu.be/S4uCkcCt1sY
+
+The submission deck is in [`submission/`](submission/).
+
 ## Architecture
 
 ### System view

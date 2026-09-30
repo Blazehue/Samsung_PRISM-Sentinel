@@ -15,7 +15,7 @@ POST /v1/troubleshoot
 
 ## Demo video
 
-Five-minute walkthrough of the live API and simulator: https://youtu.be/S4uCkcCt1sY
+Video of the live API and simulator: https://youtu.be/S4uCkcCt1sY
 
 The submission deck is in [`submission/`](submission/).
 
